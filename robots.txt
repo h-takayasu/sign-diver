@@ -5,4 +5,4 @@ Allow: /
 Disallow: /typing_game.html
 
 # サイトマップの場所
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://h-takayasu.github.io/sign-diver/sitemap.xml

@@ -764,6 +764,145 @@
       font-size: 11px;
     }
     
+
+    /* ═══════════════════════════════════════════════════════
+       スマホ対応 (max-width: 640px)
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* ── 全体 ── */
+      body { padding: 8px 6px; }
+
+      .container {
+        padding: 12px 10px;
+        border-radius: 16px;
+      }
+
+      h1 { font-size: 22px; margin-bottom: 4px; }
+
+      /* ── モード切替ボタン ── */
+      .mode-buttons { gap: 6px; }
+      .mode-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        border-radius: 12px;
+      }
+
+      /* ── メインエリア：横並び→縦積み ── */
+      .practice-main {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* ── サンプルエリア（3Dモデル）── */
+      .sample-area {
+        min-height: 180px;
+        padding: 8px;
+        border-radius: 12px;
+      }
+
+      #vrm-canvas {
+        height: 180px;
+        border-radius: 8px;
+      }
+
+      /* VRMオーバーレイコントロールをスマホ向けに */
+      .vrm-overlay-controls {
+        padding: 4px 6px;
+        gap: 4px;
+      }
+
+      .vrm-control-hint {
+        display: none; /* スマホでは操作ヒントを非表示 */
+      }
+
+      .vrm-animation-controls {
+        gap: 4px;
+      }
+
+      .vrm-control-button {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+
+      .vrm-slider-container {
+        font-size: 11px;
+        gap: 4px;
+      }
+
+      .placeholder-hint {
+        font-size: 12px;
+        margin-top: 6px;
+      }
+
+      /* ── スマホではカメラ・認識エリアを非表示 ── */
+      .camera-area,
+      .recognition-result {
+        display: none !important;
+      }
+
+      /* ── 文字選択エリア ── */
+      .character-selector {
+        padding: 10px 8px;
+        border-radius: 12px;
+      }
+
+      .current-char-display {
+        font-size: 52px;
+        margin-bottom: 8px;
+      }
+
+      .selector-section { margin-bottom: 10px; }
+      .selector-label { font-size: 12px; margin-bottom: 6px; }
+
+      /* 行ボタンを小さく */
+      .row-buttons { gap: 4px; }
+      .row-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 8px;
+      }
+
+      /* 文字ボタングリッド */
+      .char-buttons { gap: 4px; }
+      .char-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        border-radius: 8px;
+      }
+
+      /* ランダムモード */
+      .random-mode-ui {
+        padding: 10px 8px;
+        border-radius: 12px;
+      }
+
+      .random-description {
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      /* ── ナビゲーション ── */
+      .navigation {
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+
+      .nav-btn {
+        padding: 10px 14px;
+        font-size: 13px;
+        border-radius: 10px;
+        flex: 1;
+        min-width: 90px;
+        text-align: center;
+      }
+
+      /* ── フッター ── */
+      .site-footer { font-size: 11px; }
+      .site-footer a { font-size: 11px; margin: 0 6px; }
+    }
   </style>
 </head>
 <body>
@@ -1408,14 +1547,19 @@
       ground.receiveShadow = true;
       vrmScene.add(ground);
 
-      // Load VRM
+      // Load VRM（スマホは軽量版を使用）
       try {
-        console.log('📂 Loading VRM from: ./vrm/Diver_Woman7.vrm');
+        const isMobile = window.innerWidth <= 640 ||
+          /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const vrmPath = isMobile
+          ? './vrm/Diver_Woman7_compressed.vrm'
+          : './vrm/Diver_Woman7.vrm';
+        console.log('📂 Loading VRM from:', vrmPath, isMobile ? '(mobile)' : '(desktop)');
         
         const loader = new GLTFLoader();
         loader.register((parser) => new VRMLoaderPlugin(parser));
 
-        const gltf = await loader.loadAsync('./vrm/Diver_Woman7.vrm');
+        const gltf = await loader.loadAsync(vrmPath);
         vrm = gltf.userData.vrm;
         
         vrmScene.add(vrm.scene);
@@ -1910,20 +2054,31 @@
     // ==========================================
     async function init() {
       // ─── カメラ使用確認 ───────────────────────────
+      const isMobileDevice = window.innerWidth <= 640 ||
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
       const cameraAllowed = await new Promise(resolve => {
-        const modal  = document.getElementById('cameraModal');
+        const modal = document.getElementById('cameraModal');
+
+        if (isMobileDevice) {
+          // スマホ：モーダルを即非表示にしてカメラ不使用で進む
+          modal.style.display = 'none';
+          resolve(false);
+          return;
+        }
+
+        // PC：通常のモーダル表示
         const yesBtn = document.getElementById('cameraYesBtn');
         const noBtn  = document.getElementById('cameraNoBtn');
-        yesBtn.addEventListener('click', () => { modal.style.display = 'none'; resolve(true);  });
-        noBtn.addEventListener('click',  () => {
+        yesBtn.addEventListener('click', () => { modal.style.display = 'none'; resolve(true); });
+        noBtn.addEventListener('click', () => {
           modal.style.display = 'none';
-          // カメラOFF表示
           const overlay = document.getElementById('cameraOffOverlay');
           if (overlay) overlay.style.display = 'flex';
           const status = document.getElementById('cameraStatus');
           if (status) status.style.display = 'none';
-          document.getElementById('statusMessage').textContent = 'カメラ未使用モード';
-          document.getElementById('statusMessage').className = 'status-message info';
+          const sm = document.getElementById('statusMessage');
+          if (sm) { sm.textContent = 'カメラ未使用モード'; sm.className = 'status-message info'; }
           resolve(false);
         });
       });
@@ -2022,10 +2177,10 @@
           errorMessage = 'カメラが見つかりません。カメラが接続されているか確認してください。';
         }
         
-        document.getElementById('cameraStatus').textContent = 'エラー';
-        document.getElementById('cameraStatus').className = 'camera-status loading';
-        document.getElementById('statusMessage').textContent = errorMessage;
-        document.getElementById('statusMessage').className = 'status-message incorrect';
+        const csEl = document.getElementById('cameraStatus');
+        if (csEl) { csEl.textContent = 'エラー'; csEl.className = 'camera-status loading'; }
+        const smEl = document.getElementById('statusMessage');
+        if (smEl) { smEl.textContent = errorMessage; smEl.className = 'status-message incorrect'; }
         
         // より詳細なエラー情報をコンソールに
         console.error('エラー詳細:', {

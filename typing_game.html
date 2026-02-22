@@ -726,6 +726,244 @@
       color: #666;
       font-size: 14px;
     }
+
+    /* ═══════════════════════════════════════════════════════
+       スマホ対応 (max-width: 640px)
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* ── ボディ・全体 ── */
+      body {
+        padding: 0;
+        align-items: stretch;
+      }
+
+      .game-container {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        max-width: 100%;
+      }
+
+      /* ── ヘッダー ── */
+      .game-header {
+        padding: 10px 12px 0;
+      }
+
+      .game-header-top {
+        margin-bottom: 8px;
+      }
+
+      .timer, .score {
+        font-size: 17px;
+      }
+
+      .stats {
+        font-size: 11px;
+      }
+
+      /* ── 問題表示エリア ── */
+      .word-display {
+        height: 140px;
+        padding: 20px 12px;
+      }
+
+      .current-word {
+        font-size: 28px;
+        letter-spacing: 2px;
+        margin-bottom: 8px;
+        min-height: 36px;
+        /* 長い文字列が画面外に出ないよう折り返し */
+        white-space: normal;
+        word-break: break-all;
+        line-height: 1.2;
+      }
+
+      .hiragana-display {
+        font-size: 16px;
+        letter-spacing: 1px;
+        white-space: normal;
+        word-break: break-all;
+        line-height: 1.4;
+      }
+
+      .depth-meter {
+        font-size: 9px;
+        top: 6px;
+        right: 8px;
+      }
+
+      /* ── メインエリア：横並び→縦積み ── */
+      .game-main {
+        flex-direction: column;
+        padding: 10px 10px 12px;
+        gap: 10px;
+      }
+
+      .camera-area {
+        flex: none;
+        width: 100%;
+      }
+
+      /* カメラcanvasをフル幅に */
+      canvas:not(#seaCanvas) {
+        max-width: 100%;
+        border-radius: 8px;
+      }
+
+      /* ── 認識エリア：横並びでコンパクトに ── */
+      .recognition-area {
+        flex-direction: row;
+        gap: 8px;
+      }
+
+      .recognition-result {
+        flex: 1;
+        padding: 10px 8px;
+        border-radius: 8px;
+      }
+
+      .recognized-char {
+        font-size: 44px;
+        margin-bottom: 4px;
+      }
+
+      .confidence {
+        font-size: 13px;
+      }
+
+      .status-box {
+        flex: 1;
+        padding: 10px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+        line-height: 1.5;
+      }
+
+      /* ── 結果画面 ── */
+      .result-content {
+        padding: 24px 16px;
+        border-radius: 16px;
+        width: 94%;
+        max-height: 92vh;
+        overflow-y: auto;
+      }
+
+      .result-title {
+        font-size: 24px;
+        margin-bottom: 16px;
+      }
+
+      .result-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .stat-item {
+        padding: 12px 8px;
+        border-radius: 8px;
+      }
+
+      .stat-label {
+        font-size: 11px;
+      }
+
+      .stat-value {
+        font-size: 24px;
+      }
+
+      .title-display {
+        padding: 14px 10px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+      }
+
+      .title-emoji {
+        font-size: 36px;
+        margin-bottom: 6px;
+      }
+
+      .title-text {
+        font-size: 20px;
+      }
+
+      .stage-result {
+        padding: 14px 10px;
+        gap: 8px 10px;
+        margin-bottom: 12px;
+      }
+
+      .stage-result-icon {
+        font-size: 40px;
+      }
+
+      .stage-result-name {
+        font-size: 18px;
+      }
+
+      .stage-result-depth {
+        font-size: 13px;
+      }
+
+      .stage-result-comment {
+        font-size: 12px;
+      }
+
+      .result-actions {
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .result-btn {
+        padding: 12px 20px;
+        font-size: 15px;
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .high-score-notice {
+        padding: 10px;
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+
+      /* ── チュートリアル ── */
+      .tutorial-box {
+        padding: 28px 20px 24px;
+        border-radius: 20px;
+      }
+
+      .tutorial-title {
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+
+      .tutorial-tips li {
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+
+      .tutorial-ok-btn {
+        padding: 12px 32px;
+        font-size: 15px;
+      }
+
+      /* ── カウントダウン ── */
+      .countdown-number {
+        font-size: 80px;
+      }
+
+      .countdown-number.start {
+        font-size: 56px;
+      }
+
+      /* ── フッター ── */
+      .site-footer {
+        padding: 8px 0 6px;
+        font-size: 12px;
+      }
+    }
   </style>
 </head>
 <body>
