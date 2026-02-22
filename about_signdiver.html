@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sign Diverとは？指文字タイピングゲームの世界観とルールを解説します。">
+  <title>Sign Diverとは？ - 指文字タイピングゲーム Sign Diver</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Arial', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: linear-gradient(135deg, #e0f7ff 0%, #b3e5fc 50%, #81d4fa 100%);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      color: #1a237e;
+      padding: 40px 20px;
+      line-height: 1.8;
+    }
+
+    /* 背景の泡アニメーション */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 3px, transparent 3px),
+        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.25) 4px, transparent 4px),
+        radial-gradient(circle at 40% 40%, rgba(255,255,255,0.3) 2px, transparent 2px),
+        radial-gradient(circle at 60% 70%, rgba(255,255,255,0.25) 5px, transparent 5px);
+      background-size: 200px 200px, 300px 300px, 250px 250px, 350px 350px;
+      animation: bubbleFloat 25s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes bubbleFloat {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(10px, -20px); }
+      50% { transform: translate(-5px, -40px); }
+      75% { transform: translate(15px, -30px); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 16px;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 12px;
+      color: #1a237e;
+      text-shadow: 2px 2px 0 rgba(100,181,246,0.3);
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 16px;
+      color: #0288d1;
+      margin-bottom: 32px;
+    }
+
+    h2 {
+      font-size: 22px;
+      margin-top: 32px;
+      margin-bottom: 16px;
+      color: #1a237e;
+      border-bottom: 2px solid rgba(100,181,246,0.4);
+      padding-bottom: 8px;
+    }
+
+    p, li {
+      color: #1a237e;
+      margin-bottom: 16px;
+    }
+
+    ul, ol {
+      margin-left: 24px;
+      margin-bottom: 16px;
+    }
+
+    .world-box {
+      background: linear-gradient(135deg, rgba(179,229,252,0.3), rgba(129,212,250,0.3));
+      border: 2px solid rgba(100,181,246,0.3);
+      padding: 20px;
+      margin: 24px 0;
+      border-radius: 8px;
+    }
+
+    .stage-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .stage-card {
+      background: rgba(255,255,255,0.9);
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stage-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .stage-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a237e;
+    }
+
+    .stage-depth {
+      font-size: 12px;
+      color: #0288d1;
+    }
+
+    .rule-box {
+      background: rgba(76,175,80,0.1);
+      border-left: 4px solid #4caf50;
+      padding: 16px 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      padding: 10px 24px;
+      background: rgba(79,172,254,0.15);
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 50px;
+      color: #1a237e;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .back-link:hover {
+      background: rgba(79,172,254,0.25);
+    }
+
+    .site-footer {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .site-footer a {
+      color: #0288d1;
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+      margin: 0 8px;
+    }
+
+    .site-footer a:hover {
+      color: #1a237e;
+    }
+
+    .footer-icon {
+      color: #ff4444;
+      font-size: 11px;
+    }
+
+    @media (max-width: 600px) {
+      .stage-list {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌊 Sign Diver とは？</h1>
+    <p class="subtitle">指文字で海の中を突き進む、指文字タイピングゲーム</p>
+
+    <h2>Sign Diverの世界観</h2>
+    <div class="world-box">
+      <p><strong>あるダイバーは、深海を目指して海に潜りました。</strong></p>
+      <p><br></p>
+      <p>潜水の鍵となるのは、<strong>指文字</strong>。指文字を素早く・正確に表現するほど、ダイバーはより深い海へと潜っていくことができます。</p>
+      <p>浅瀬から始まり、未だ見ぬ<strong>「深海」</strong>へ──。</p>
+      <p>酸素の限界という制限時間が来る前に、どこまで深く潜れるか、挑戦してみましょう！</p>
+    </div>
+
+    <h2>ステージ</h2>
+    <p>累計でクリアした文字数によって、到達できる深度が変化します。深海のその先もあるとか…？</p>
+
+    <div class="stage-list">
+      <div class="stage-card">
+        <div class="stage-icon">🏖️</div>
+        <div class="stage-name">浅瀬</div>
+        <div class="stage-depth">0m</div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-icon">🪸</div>
+        <div class="stage-name">珊瑚礁</div>
+        <div class="stage-depth">10m</div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-icon">🐠</div>
+        <div class="stage-name">浅海</div>
+        <div class="stage-depth">30m</div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-icon">🌊</div>
+        <div class="stage-name">潮目</div>
+        <div class="stage-depth">80m</div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-icon">🐙</div>
+        <div class="stage-name">中層</div>
+        <div class="stage-depth">200m</div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-icon">🌑</div>
+        <div class="stage-name">薄暮層</div>
+        <div class="stage-depth">500m</div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-icon">🦑</div>
+        <div class="stage-name">深海</div>
+        <div class="stage-depth">1,000m</div>
+      </div>
+    </div>
+
+    <h2>練習モードの基本ルール</h2>
+    <p>指文字を全く知らない人はダイバーと一緒に確認しましょう！</p>
+    <p>このモードはカメラを使わなくてもプレイすることができます。</p>
+    <div class="rule-box">
+      <p><strong>1. 個別練習モード</strong></p>
+      <p>確認したい文字を選択し、指文字の動きを見ることができます。</p>
+      <p>ダイバーの動きは角度・速度などを変更しながら確認することができます。</p>
+      <p>カメラを使えば自分の手の形がどのように認識されているかも確認できます。</p>
+      <p>「S」ではたどり着いたステージに応じて特別なモーションを見ることができます。</p>
+    </div>
+    <div class="rule-box">
+      <p><strong>2. ランダム出題モード</strong></p>
+      <p>ランダムに問題が文字が出題されます。</p>
+      <p>ダイバーは停止されているので指文字が思い出せなければ再生して確認しましょう！</p>
+    </div>
+
+    <h2>タイピングモードの基本ルール</h2>
+    <p>いよいよ潜水です！</p>
+    <div class="rule-box">
+      <p><strong>1. 難易度を選びます</strong></p>
+      <ul>
+        <li><strong>易しい：</strong>短い単語 / 60秒</li>
+        <li><strong>普通：</strong>長めの単語 / 90秒</li>
+        <li><strong>難しい：</strong>文章・挨拶 / 120秒</li>
+      </ul>
+    </div>
+
+    <div class="rule-box">
+      <p><strong>2. カメラの前で指文字を表現します</strong></p>
+      <p>画面に表示される単語を、指文字で1文字ずつ表現します。指の形を機械が読み取れる速度で正確に作ることが大切です。</p>
+    </div>
+
+    <div class="rule-box">
+      <p><strong>3. 制限時間内にクリアを目指します</strong></p>
+      <ul>
+        <li>各単語には制限時間があります（1文字あたり3秒＋基本2秒）</li>
+        <li>時間を超過するとペナルティ（マイナス得点）</li>
+        <li>制限時間の半分以内でクリアするとコンボ継続＋3,5,10コンボでタイムボーナスが加算されます。</li>
+      </ul>
+    </div>
+
+    <h2>スコアと称号</h2>
+    <p>ゲーム終了後、以下の情報が記録されます：</p>
+    <ul>
+      <li><strong>スコア：</strong>クリアした単語数や速度に応じて加算</li>
+      <li><strong>到達深度：</strong>累計文字数で決まる最深記録</li>
+      <li><strong>称号：</strong>スコアに応じて付与</li>
+    </ul>
+    <p>過去のプレイ履歴はブラウザに保存され、いつでも確認できます。</p>
+
+    <h2>Sign Diverの留意点</h2>
+    <p>読み取りのためにカメラと自分が正面で向き合うようにしてください。</p>
+    <p>指文字の角度は初心者には分かりづらいことがあります。覚えたら地域の手話サークルなどで通じるか確認してみましょう！</p>
+
+    <a href="index.html" class="back-link">← メニューに戻る</a>
+  </div>
+
+  <footer class="site-footer">
+    <div style="margin-bottom: 8px; text-align: center;">
+      <a href="about_yubimoji.html">指文字とは？</a>
+      <span style="color: rgba(2,136,209,0.3);">|</span>
+      <a href="terms.html">利用規約</a>
+      <span style="color: rgba(2,136,209,0.3);">|</span>
+      <a href="privacy.html">プライバシーポリシー</a>
+    </div>
+    <a href="https://www.youtube.com/@Katsuo_Shuwa_Doga" target="_blank" rel="noopener noreferrer">
+      <span class="footer-icon">▶</span>
+      <span>@KatsuoShuwaDoga</span>
+    </a>
+  </footer>
+</body>
+</html>

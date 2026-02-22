@@ -1,0 +1,2409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sign Diverの練習モード。制限時間なしで指文字を学習できます。">
+  <meta name="robots" content="noindex">
+  <title>練習モード - 指文字タイピングゲーム Sign Diver</title>
+  
+  <!-- Three.js と VRM -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/",
+        "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.0.9/lib/three-vrm.module.js"
+      }
+    }
+  </script>
+  
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Segoe UI', 'Arial', sans-serif;
+      background: linear-gradient(135deg, #e0f7ff 0%, #b3e5fc 50%, #81d4fa 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+      color: #1a237e;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    /* 背景の泡アニメーション */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 3px, transparent 3px),
+        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.25) 4px, transparent 4px),
+        radial-gradient(circle at 40% 40%, rgba(255,255,255,0.3) 2px, transparent 2px),
+        radial-gradient(circle at 60% 70%, rgba(255,255,255,0.25) 5px, transparent 5px);
+      background-size: 200px 200px, 300px 300px, 250px 250px, 350px 350px;
+      animation: bubbleFloat 25s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    @keyframes bubbleFloat {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(10px, -20px); }
+      50% { transform: translate(-5px, -40px); }
+      75% { transform: translate(15px, -30px); }
+    }
+    
+    .container {
+      max-width: 1100px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 10px 40px rgba(100, 181, 246, 0.3);
+      border: 2px solid rgba(100, 181, 246, 0.3);
+      position: relative;
+      z-index: 1;
+    }
+    
+    /* ヘッダー */
+    .page-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1a237e;
+      margin-bottom: 3px;
+      text-shadow: 2px 2px 0 rgba(100,181,246,0.3);
+    }
+    
+    .page-subtitle {
+      font-size: 13px;
+      color: #4a148c;
+      font-weight: 600;
+    }
+    
+    /* モード選択（将来の拡張用） */
+    .mode-selector {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    
+    .mode-btn {
+      padding: 6px 16px;
+      border: 2px solid rgba(100,181,246,0.4);
+      background: rgba(255,255,255,0.7);
+      color: #1a237e;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    
+    .mode-btn.active {
+      background: linear-gradient(135deg, #64b5f6, #42a5f5);
+      color: white;
+      border-color: #42a5f5;
+      box-shadow: 0 4px 12px rgba(100,181,246,0.4);
+    }
+    
+    /* メインエリア */
+    .practice-main {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    /* 左側：サンプルエリア */
+    .sample-area {
+      flex: 1;
+      background: linear-gradient(135deg, rgba(179,229,252,0.3), rgba(129,212,250,0.3));
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 240px;
+      position: relative;
+    }
+    
+    #vrm-canvas {
+      width: 100%;
+      height: 200px;
+      border-radius: 12px;
+      background: #fff8e1;
+    }
+    
+    .placeholder {
+      text-align: center;
+      color: #4a148c;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .placeholder-icon {
+      font-size: 70px;
+      margin-bottom: 8px;
+      opacity: 0.7;
+    }
+    
+    .placeholder-text {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .placeholder-hint {
+      font-size: 12px;
+      color: #6a1b9a;
+      font-weight: 600;
+      margin-top: 8px;
+      padding: 4px 10px;
+      background: rgba(206,147,216,0.2);
+      border-radius: 8px;
+      line-height: 1.4;
+      max-width: 100%;
+      word-wrap: break-word;
+      text-align: center;
+    }
+    
+    .placeholder-note {
+      font-size: 11px;
+      opacity: 0.6;
+    }
+    
+    /* 右側：カメラエリア */
+    .camera-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .camera-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid rgba(100,181,246,0.3);
+      height: 180px;
+    }
+    
+    video {
+      display: none;
+    }
+    
+    canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 14px;
+    }
+    
+    .camera-status {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    .camera-status.loading {
+      background: rgba(255,152,0,0.9);
+    }
+    
+    .camera-status.ready {
+      background: rgba(76,175,80,0.9);
+    }
+    
+    /* 認識結果 */
+    .recognition-result {
+      background: rgba(255,255,255,0.8);
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 16px;
+      padding: 10px;
+      text-align: center;
+      transition: background 0.3s, border-color 0.3s;
+      height: 160px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .recognition-result.disabled {
+      background: rgba(200,200,200,0.3);
+      border-color: rgba(150,150,150,0.3);
+    }
+    
+    .result-label {
+      font-size: 11px;
+      color: #4a148c;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    
+    .recognized-char {
+      font-size: 42px;
+      font-weight: bold;
+      color: #1a237e;
+      margin-bottom: 4px;
+      line-height: 1;
+    }
+    
+    .recognition-result.disabled .recognized-char {
+      color: #999;
+    }
+    
+    .confidence {
+      font-size: 13px;
+      color: #4a148c;
+      margin-bottom: 6px;
+    }
+    
+    .recognition-result.disabled .confidence {
+      color: #999;
+    }
+    
+    .status-message {
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 50px;
+      display: inline-block;
+    }
+    
+    .status-message.correct {
+      background: rgba(76,175,80,0.2);
+      color: #2e7d32;
+    }
+    
+    .status-message.incorrect {
+      background: rgba(239,83,80,0.2);
+      color: #c62828;
+    }
+    
+    .status-message.waiting {
+      background: rgba(100,181,246,0.2);
+      color: #0288d1;
+    }
+    
+    .status-message.info {
+      background: rgba(158,158,158,0.2);
+      color: #616161;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      padding: 8px 12px;
+      white-space: pre-line;
+    }
+    
+    /* 文字選択 */
+    .character-selector {
+      background: rgba(255,255,255,0.8);
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    
+    /* ランダム出題モードUI */
+    .random-mode-ui {
+      background: rgba(255,255,255,0.8);
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .random-description {
+      text-align: center;
+      color: #4a148c;
+      padding: 12px;
+    }
+    
+    .random-description p {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 6px 0;
+      line-height: 1.6;
+    }
+    
+    .stats-display {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    
+    .stat-item {
+      background: rgba(100,181,246,0.1);
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 12px;
+      padding: 10px 16px;
+      text-align: center;
+      min-width: 80px;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: #4a148c;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: 900;
+      color: #1a237e;
+    }
+    
+    .random-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    
+    .control-btn {
+      padding: 10px 28px;
+      border: 2px solid rgba(100,181,246,0.4);
+      background: linear-gradient(135deg, #64b5f6, #42a5f5);
+      color: white;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(100,181,246,0.4);
+    }
+    
+    .control-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(100,181,246,0.6);
+    }
+    
+    .control-btn.secondary {
+      background: rgba(255,255,255,0.9);
+      color: #1a237e;
+      box-shadow: none;
+      width: 200px;
+    }
+    
+    .control-btn.secondary:hover {
+      background: rgba(239,83,80,0.2);
+      border-color: #ef5350;
+      color: #c62828;
+    }
+    
+    .selector-section {
+      margin-bottom: 10px;
+    }
+    
+    .selector-section:last-child {
+      margin-bottom: 0;
+    }
+    
+    .selector-label {
+      font-size: 12px;
+      color: #4a148c;
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    
+    .current-char-display {
+      font-size: 48px;
+      font-weight: 900;
+      color: #1a237e;
+      text-align: center;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 0 rgba(100,181,246,0.3);
+      line-height: 1;
+    }
+    
+    /* 行選択ボタン */
+    .row-buttons {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    
+    .row-btn {
+      min-width: 40px;
+      padding: 6px 12px;
+      border: 2px solid rgba(100,181,246,0.4);
+      background: rgba(255,255,255,0.9);
+      color: #1a237e;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+    
+    .row-btn:hover {
+      background: rgba(100,181,246,0.2);
+      transform: translateY(-2px);
+    }
+    
+    .row-btn.active {
+      background: linear-gradient(135deg, #64b5f6, #42a5f5);
+      color: white;
+      border-color: #42a5f5;
+      box-shadow: 0 4px 12px rgba(100,181,246,0.5);
+    }
+    
+    /* 文字ボタン */
+    .char-buttons {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+    
+    .char-btn {
+      width: 40px;
+      height: 40px;
+      border: 2px solid rgba(100,181,246,0.4);
+      background: rgba(255,255,255,0.9);
+      color: #1a237e;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+    
+    .char-btn:hover {
+      background: rgba(100,181,246,0.2);
+      transform: translateY(-2px);
+    }
+    
+    .char-btn.active {
+      background: linear-gradient(135deg, #ce93d8, #ba68c8);
+      color: white;
+      border-color: #ba68c8;
+      box-shadow: 0 4px 12px rgba(206,147,216,0.5);
+    }
+    
+    /* ナビゲーション */
+    .navigation {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    
+    .nav-btn {
+      padding: 8px 20px;
+      border: 2px solid rgba(100,181,246,0.4);
+      background: rgba(255,255,255,0.9);
+      color: #1a237e;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.3s;
+    }
+    
+    .nav-btn:hover {
+      background: rgba(100,181,246,0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(100,181,246,0.3);
+    }
+    
+    .nav-btn.primary {
+      background: linear-gradient(135deg, #66bb6a, #4caf50);
+      color: white;
+      border-color: #4caf50;
+    }
+    
+    .nav-btn.primary:hover {
+      box-shadow: 0 6px 16px rgba(76,175,80,0.4);
+    }
+    
+    /* フッター */
+    .site-footer {
+      text-align: center;
+      margin-top: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .site-footer a {
+      color: #0288d1;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    
+    .site-footer a:hover {
+      color: #0277bd;
+    }
+    #vrm-canvas {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 500px;
+    }
+    
+    /* ブラックアウトオーバーレイ（ロックコンテンツ用） */
+    .vrm-blackout-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    
+    .vrm-blackout-overlay.show {
+      display: flex;
+    }
+    
+    .blackout-content {
+      text-align: center;
+      color: white;
+      max-width: 400px;
+    }
+    
+    .blackout-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    
+    .blackout-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: #1976d2;
+    }
+    
+    .blackout-message {
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      color: #e0e0e0;
+    }
+    
+    /* VRMオーバーレイコントロール */
+    .vrm-overlay-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(240, 246, 255, 0.93);
+      backdrop-filter: blur(10px);
+      padding: 10px 12px;
+      box-shadow: 0 -4px 20px rgba(26, 58, 92, 0.12);
+      z-index: 10;
+    }
+    
+    .vrm-control-hint {
+      text-align: center;
+      font-size: 10px;
+      color: #4a6080;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+    
+    .vrm-animation-controls {
+      margin: 6px 0;
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+    
+    .vrm-control-button {
+      padding: 8px 14px;
+      background: linear-gradient(135deg, #64b5f6, #1976d2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(25,118,210,0.3);
+    }
+    
+    .vrm-control-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(25,118,210,0.5);
+    }
+    
+    .vrm-control-button:active {
+      transform: translateY(0);
+    }
+    
+    .vrm-slider-container {
+      margin: 6px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    .vrm-slider-container label {
+      font-weight: bold;
+      min-width: 60px;
+      text-align: right;
+      color: #1a3a5c;
+      font-size: 11px;
+    }
+    
+    .vrm-slider-container input[type="range"] {
+      width: 180px;
+      height: 6px;
+      border-radius: 3px;
+      background: #bbdefb;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    
+    .vrm-slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1976d2;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .vrm-slider-container input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1976d2;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .vrm-slider-container span {
+      min-width: 70px;
+      font-weight: bold;
+      color: #1a3a5c;
+      font-size: 11px;
+    }
+    
+  </style>
+</head>
+<body>
+  <!-- カメラ使用確認モーダル -->
+  <div id="cameraModal" style="
+    position:fixed; inset:0; z-index:9999;
+    background:rgba(10,20,60,0.75);
+    display:flex; align-items:center; justify-content:center;
+    backdrop-filter:blur(6px);
+  ">
+    <div style="
+      background:white; border-radius:20px; padding:32px 28px;
+      max-width:400px; width:90%; text-align:center;
+      box-shadow:0 20px 60px rgba(0,0,100,0.3);
+      border:2px solid rgba(100,181,246,0.4);
+    ">
+      <div style="font-size:52px; margin-bottom:12px;">📷</div>
+      <h2 style="font-size:19px; font-weight:800; color:#1a237e; margin-bottom:12px;">
+        カメラを使用しますか？
+      </h2>
+      <p style="font-size:13px; color:#37474f; line-height:1.8; margin-bottom:24px;">
+        カメラを使うと手の動きをリアルタイムで認識し、<br>
+        指文字の正誤判定ができます。<br>
+        <strong style="color:#1565c0;">カメラなしでも練習ページは利用できます。</strong>
+      </p>
+      <div style="display:flex; gap:12px; justify-content:center; margin-bottom:16px;">
+        <button id="cameraYesBtn" style="
+          padding:12px 30px; border:none; border-radius:50px; cursor:pointer;
+          background:linear-gradient(135deg,#64b5f6,#1976d2);
+          color:white; font-size:15px; font-weight:700;
+          box-shadow:0 4px 14px rgba(25,118,210,0.4);
+        ">✅ 使う</button>
+        <button id="cameraNoBtn" style="
+          padding:12px 30px; border:2px solid #ccc; border-radius:50px; cursor:pointer;
+          background:white; color:#555; font-size:15px; font-weight:700;
+        ">🚫 使わない</button>
+      </div>
+      <p style="font-size:11px; color:#aaa; line-height:1.6;">
+        「使わない」を選んだ場合、ページをリロードすれば<br>再度選択できます。
+      </p>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- ヘッダー -->
+    <div class="page-header">
+      <h1 class="page-title">🎓 練習モード</h1>
+      <p class="page-subtitle">制限時間なしで指文字を学習しよう</p>
+    </div>
+    
+    <!-- モード選択（将来の拡張用：現在は個別練習のみ） -->
+    <div class="mode-selector">
+      <button class="mode-btn active" id="modeIndividual">個別練習</button>
+      <button class="mode-btn" id="modeRandom">ランダム出題</button>
+    </div>
+    
+    <!-- メインエリア -->
+    <div class="practice-main">
+      <!-- 左側：サンプルエリア -->
+      <div class="sample-area">
+        <div id="vrm-canvas">
+          <!-- ブラックアウトオーバーレイ（ロックコンテンツ用） -->
+          <div class="vrm-blackout-overlay" id="vrm-blackout">
+            <div class="blackout-content">
+              <div class="blackout-icon">🔒</div>
+              <div class="blackout-title" id="blackout-title">このコンテンツはロックされています</div>
+              <div class="blackout-message" id="blackout-message">解放条件を満たすとご覧いただけます。</div>
+            </div>
+          </div>
+          
+          <!-- オーバーレイUI -->
+          <div class="vrm-overlay-controls">
+            <div class="vrm-control-hint">左クリック:回転 | 右クリック:移動 | ホイール:ズーム | 画面クリック:再生/停止</div>
+            
+            <div class="vrm-animation-controls">
+              <button id="vrm-playBtn" class="vrm-control-button">▶ 再生</button>
+              <button id="vrm-pauseBtn" class="vrm-control-button">⏸ 停止</button>
+              <button id="vrm-resetCameraBtn" class="vrm-control-button">📷 視点リセット</button>
+            </div>
+            
+            <div class="vrm-slider-container">
+              <label for="vrm-seekSlider">再生位置:</label>
+              <input type="range" id="vrm-seekSlider" min="0" max="100" value="0" step="0.1">
+              <span id="vrm-timeDisplay">0.0s / 0.0s</span>
+            </div>
+            
+            <div class="vrm-slider-container">
+              <label for="vrm-speedSlider">速度:</label>
+              <input type="range" id="vrm-speedSlider" min="0.1" max="2" value="1" step="0.1">
+              <span id="vrm-speedDisplay">1.0x</span>
+            </div>
+          </div>
+        </div>
+        <div class="placeholder-hint" id="charHint">アルファベットのa</div>
+      </div>
+      
+      <!-- 右側：カメラエリア -->
+      <div class="camera-area">
+        <div class="camera-wrapper">
+          <video id="video" playsinline></video>
+          <canvas id="canvas"></canvas>
+          <div class="camera-status loading" id="cameraStatus">カメラ起動中...</div>
+          <div id="cameraOffOverlay" style="
+            display:none; position:absolute; inset:0; border-radius:14px;
+            background:rgba(20,20,50,0.82);
+            flex-direction:column; align-items:center; justify-content:center;
+            gap:8px; color:white; text-align:center; padding:16px;
+          ">
+            <span style="font-size:36px;">📷</span>
+            <span style="font-size:13px; font-weight:700;">カメラ未使用モード</span>
+            <span style="font-size:11px; opacity:0.7;">リロードで再選択できます</span>
+          </div>
+        </div>
+        
+        <div class="recognition-result">
+          <div class="result-label">認識結果</div>
+          <div class="recognized-char" id="recognizedChar">-</div>
+          <div class="confidence" id="confidence">-</div>
+          <div class="status-message waiting" id="statusMessage">手をカメラに映してください</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 文字選択 -->
+    <div class="character-selector" id="characterSelector">
+      <div class="current-char-display" id="currentCharDisplay">あ</div>
+      
+      <!-- 行選択 -->
+      <div class="selector-section">
+        <div class="selector-label">行を選択</div>
+        <div class="row-buttons" id="rowButtons">
+          <!-- JavaScriptで生成 -->
+        </div>
+      </div>
+      
+      <!-- 文字選択 -->
+      <div class="selector-section">
+        <div class="selector-label">文字を選択 <span id="currentRowLabel">（「あ行」を選択中）</span></div>
+        <div class="char-buttons" id="charButtons">
+          <!-- JavaScriptで生成 -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- ランダム出題モード用UI -->
+    <div class="random-mode-ui" id="randomModeUI" style="display: none;">
+      <div class="current-char-display" id="randomCharDisplay">あ</div>
+      
+      <!-- 説明文 -->
+      <div class="random-description">
+        <p>ランダムに出題される指文字を作ってください。</p>
+        <p>正解すると自動的に次の文字に進みます。</p>
+      </div>
+    </div>
+    
+    <!-- ナビゲーション -->
+    <div class="navigation">
+      <button class="nav-btn" id="prevBtn">← 前の文字</button>
+      <button class="nav-btn primary" onclick="location.href='index.html'">メニューに戻る</button>
+      <button class="nav-btn" id="nextBtn">次の文字 →</button>
+    </div>
+  </div>
+  
+  <footer class="site-footer">
+    <div style="margin-bottom: 8px; text-align: center;">
+      <a href="about_yubimoji.html" style="margin: 0 12px;">指文字とは？</a>
+      <span style="color: rgba(2,136,209,0.3);">|</span>
+      <a href="about_signdiver.html" style="margin: 0 12px;">Sign Diverとは？</a>
+      <span style="color: rgba(2,136,209,0.3);">|</span>
+      <a href="terms.html" style="margin: 0 12px;">利用規約</a>
+      <span style="color: rgba(2,136,209,0.3);">|</span>
+      <a href="privacy.html" style="margin: 0 12px;">プライバシーポリシー</a>
+    </div>
+    <a href="https://www.youtube.com/@Katsuo_Shuwa_Doga" target="_blank" rel="noopener noreferrer">
+      ▶ @KatsuoShuwaDoga
+    </a>
+  </footer>
+
+  <script type="module">
+    // ==========================================
+    // 文字データ定義
+    // ==========================================
+    const CHARACTER_ROWS = {
+      'あ': { label: 'あ行', chars: ['あ', 'い', 'う', 'え', 'お'] },
+      'か': { label: 'か行', chars: ['か', 'き', 'く', 'け', 'こ', 'が', 'ぎ', 'ぐ', 'げ', 'ご'] },
+      'さ': { label: 'さ行', chars: ['さ', 'し', 'す', 'せ', 'そ', 'ざ', 'じ', 'ず', 'ぜ', 'ぞ'] },
+      'た': { label: 'た行', chars: ['た', 'ち', 'つ', 'て', 'と', 'だ', 'ぢ', 'づ', 'で', 'ど'] },
+      'な': { label: 'な行', chars: ['な', 'に', 'ぬ', 'ね', 'の'] },
+      'は': { label: 'は行', chars: ['は', 'ひ', 'ふ', 'へ', 'ほ', 'ば', 'び', 'ぶ', 'べ', 'ぼ', 'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'] },
+      'ま': { label: 'ま行', chars: ['ま', 'み', 'む', 'め', 'も'] },
+      'や': { label: 'や行', chars: ['や', 'ゆ', 'よ'] },
+      'ら': { label: 'ら行', chars: ['ら', 'り', 'る', 'れ', 'ろ'] },
+      'わ': { label: 'わ行', chars: ['わ', 'を', 'ん'] },
+      '小': { label: '小文字', chars: ['ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'ゃ', 'ゅ', 'ょ', 'っ', 'ー'] },
+      'S': { label: 'スペシャル', chars: ['1', '2', '3', '4', '5'] }
+    };
+    
+    // スペシャルステージ名の定義
+    const SPECIAL_STAGE_NAMES = {
+      '1': '中層',
+      '2': '薄暮層',
+      '3': '深海',
+      '4': '超深海',
+      '5': '???'
+    };
+    
+    // ひらがな → GLBファイル名のマッピング
+    const CHAR_TO_GLB = {
+      'あ': '01_a.glb', 'い': '02_i.glb', 'う': '03_u.glb', 'え': '04_e.glb', 'お': '05_o.glb',
+      'か': '06_ka.glb', 'き': '07_ki.glb', 'く': '08_ku.glb', 'け': '09_ke.glb', 'こ': '10_ko.glb',
+      'さ': '11_sa.glb', 'し': '12_shi.glb', 'す': '13_su.glb', 'せ': '14_se.glb', 'そ': '15_so.glb',
+      'た': '16_ta.glb', 'ち': '17_chi.glb', 'つ': '18_tsu.glb', 'て': '19_te.glb', 'と': '20_to.glb',
+      'な': '21_na.glb', 'に': '22_ni.glb', 'ぬ': '23_nu.glb', 'ね': '24_ne.glb', 'の': '25_no.glb',
+      'は': '26_ha.glb', 'ひ': '27_hi.glb', 'ふ': '28_fu.glb', 'へ': '29_he.glb', 'ほ': '30_ho.glb',
+      'ま': '31_ma.glb', 'み': '32_mi.glb', 'む': '33_mu.glb', 'め': '34_me.glb', 'も': '35_mo.glb',
+      'や': '36_ya.glb', 'ゆ': '37_yu.glb', 'よ': '38_yo.glb',
+      'ら': '39_ra.glb', 'り': '40_ri.glb', 'る': '41_ru.glb', 'れ': '42_re.glb', 'ろ': '43_ro.glb',
+      'わ': '44_wa.glb', 'を': '45_wo.glb', 'ん': '46_n.glb',
+      'が': '48_ga.glb', 'ぎ': '49_gi.glb', 'ぐ': '50_gu.glb', 'げ': '51_ge.glb', 'ご': '52_go.glb',
+      'ざ': '53_za.glb', 'じ': '54_ji.glb', 'ず': '55_zu.glb', 'ぜ': '56_ze.glb', 'ぞ': '57_zo.glb',
+      'だ': '58_da.glb', 'ぢ': '59_di.glb', 'づ': '60_du.glb', 'で': '61_de.glb', 'ど': '62_do.glb',
+      'ば': '63_ba.glb', 'び': '64_bi.glb', 'ぶ': '65_bu.glb', 'べ': '66_be.glb', 'ぼ': '67_bo.glb',
+      'ぱ': '68_pa.glb', 'ぴ': '69_pi.glb', 'ぷ': '70_pu.glb', 'ぺ': '71_pe.glb', 'ぽ': '72_po.glb',
+      'ゃ': '73_xya.glb', 'ゅ': '74_xyu.glb', 'ょ': '75_xyo.glb', 'っ': '76_xtsu.glb',
+      'ぁ': '77_xa.glb', 'ぃ': '78_xi.glb', 'ぅ': '79_xu.glb', 'ぇ': '80_xe.glb', 'ぉ': '81_xo.glb',
+      'ー': '47_bar.glb',
+      '1': 's1_fight.glb', '2': 's2_otukare.glb', '3': 's3_sugoi.glb', '4': 's4_hakusyu.glb', '5': 's5_seeyou.glb'
+    };
+    
+    const ROW_ORDER = ['あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', '小', 'S'];
+    
+    // ==========================================
+    // ステージ到達判定
+    // ==========================================
+    
+    // 到達ステージを取得（localStorageから）
+    function getMaxStageReached() {
+      try {
+        const saved = localStorage.getItem('signDiverMaxStage');
+        console.log(`[DEBUG] localStorage 'signDiverMaxStage':`, saved);
+        const result = saved ? parseInt(saved) : 0;
+        console.log(`[DEBUG] Parsed max stage:`, result);
+        return result;
+      } catch (e) {
+        console.warn('localStorage access failed:', e);
+        return 0;
+      }
+    }
+    
+    // ステージ到達を保存（タイピングゲーム側から呼ばれる想定）
+    function saveMaxStageReached(stage) {
+      try {
+        const current = getMaxStageReached();
+        console.log(`[DEBUG] saveMaxStageReached called: stage=${stage}, current=${current}`);
+        if (stage > current) {
+          localStorage.setItem('signDiverMaxStage', stage.toString());
+          console.log(`✅ New stage unlocked: ${stage}`);
+          console.log(`[DEBUG] localStorage updated to:`, localStorage.getItem('signDiverMaxStage'));
+        } else {
+          console.log(`[DEBUG] Stage ${stage} already unlocked (current: ${current})`);
+        }
+      } catch (e) {
+        console.warn('localStorage save failed:', e);
+      }
+    }
+    
+    // グローバルに公開（タイピングゲームから呼び出せるように）
+    window.saveMaxStageReached = saveMaxStageReached;
+    
+    // スペシャルステージがアンロックされているか判定
+    function isStageUnlocked(stageNum) {
+      const maxStage = getMaxStageReached();
+      const unlocked = stageNum <= maxStage;
+      console.log(`[DEBUG] isStageUnlocked(${stageNum}): maxStage=${maxStage}, unlocked=${unlocked}`);
+      return unlocked;
+    }
+    
+    // 各文字の覚え方コメント（ファイルから読み込み）
+    let CHARACTER_HINTS = {};
+    
+    // 練習モードで認識判定を行う文字（清音のみ）
+    const JUDGEABLE_CHARS = [
+      'あ', 'い', 'う', 'え', 'お',
+      'か', 'き', 'く', 'け', 'こ',
+      'さ', 'し', 'す', 'せ', 'そ',
+      'た', 'ち', 'つ', 'て', 'と',
+      'な', 'に', 'ぬ', 'ね', 'の',
+      'は', 'ひ', 'ふ', 'へ', 'ほ',
+      'ま', 'み', 'む', 'め', 'も',
+      'や', 'ゆ', 'よ',
+      'ら', 'り', 'る', 'れ', 'ろ',
+      'わ', 'を', 'ん'
+    ];
+    
+    // 現在選択中の文字が判定対象かどうか
+    function isJudgeable(char) {
+      return JUDGEABLE_CHARS.includes(char);
+    }
+    
+    // ==========================================
+    // グローバル変数
+    // ==========================================
+    let currentRow = 'あ';
+    let currentCharIndex = 0;
+    let currentChar = 'あ';
+    let allCharacters = [];  // 全文字のフラットリスト
+    
+    let model = null;
+    let hands = null;
+    let camera = null;
+    let labelMap = {};
+    
+    let lastRecognized = '';
+    let lastConfidence = 0;
+    
+    // フレームバッファ（15フレーム分のランドマークデータを蓄積）
+    let frameBuffer = [];
+    const TARGET_FRAMES = 15;
+    
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // モード管理
+    let currentMode = 'individual'; // 'individual' or 'random'
+    
+    // ランダム出題モード用
+    let randomModeActive = false;
+    let randomCharPool = [];  // 出題対象の文字リスト
+    let totalQuestions = 0;
+    let correctAnswers = 0;
+    let currentQuestionAnswered = false;  // 現在の問題に正解したか
+    
+    // VRM表示用
+    let vrmScene, vrmCamera, vrmRenderer, vrmControls, vrm;
+    let mixer, action, exprAction, clock;
+    let vrmInitialPosition, vrmInitialRotation;
+    let isPaused = false;
+    let initialCameraPosition, initialCameraTarget;
+    let hairBones = [];
+    let GLTFLoader, OrbitControls, VRMLoaderPlugin; // グローバルに保存
+    
+    // ==========================================
+    // 英語ラベルから日本語への変換マップ
+    // ==========================================
+    const romajiToHiragana = {
+      // 清音
+      "a": "あ", "i": "い", "u": "う", "e": "え", "o": "お",
+      "ka": "か", "ki": "き", "ku": "く", "ke": "け", "ko": "こ",
+      "sa": "さ", "si": "し", "shi": "し", "su": "す", "se": "せ", "so": "そ",
+      "ta": "た", "ti": "ち", "chi": "ち", "tu": "つ", "tsu": "つ", "te": "て", "to": "と",
+      "na": "な", "ni": "に", "nu": "ぬ", "ne": "ね", "no": "の",
+      "ha": "は", "hi": "ひ", "hu": "ふ", "fu": "ふ", "he": "へ", "ho": "ほ",
+      "ma": "ま", "mi": "み", "mu": "む", "me": "め", "mo": "も",
+      "ya": "や", "yu": "ゆ", "yo": "よ",
+      "ra": "ら", "ri": "り", "ru": "る", "re": "れ", "ro": "ろ",
+      "wa": "わ", "wo": "を", "n": "ん", "nn": "ん",
+      
+      // 濁音
+      "ga": "が", "gi": "ぎ", "gu": "ぐ", "ge": "げ", "go": "ご",
+      "za": "ざ", "zi": "じ", "ji": "じ", "zu": "ず", "ze": "ぜ", "zo": "ぞ",
+      "da": "だ", "di": "ぢ", "du": "づ", "de": "で", "do": "ど",
+      "ba": "ば", "bi": "び", "bu": "ぶ", "be": "べ", "bo": "ぼ",
+      
+      // 半濁音
+      "pa": "ぱ", "pi": "ぴ", "pu": "ぷ", "pe": "ぺ", "po": "ぽ",
+      
+      // 拗音
+      "kya": "きゃ", "kyu": "きゅ", "kyo": "きょ",
+      "sha": "しゃ", "shu": "しゅ", "sho": "しょ",
+      "cha": "ちゃ", "chu": "ちゅ", "cho": "ちょ",
+      "nya": "にゃ", "nyu": "にゅ", "nyo": "にょ",
+      "hya": "ひゃ", "hyu": "ひゅ", "hyo": "ひょ",
+      "mya": "みゃ", "myu": "みゅ", "myo": "みょ",
+      "rya": "りゃ", "ryu": "りゅ", "ryo": "りょ",
+      "gya": "ぎゃ", "gyu": "ぎゅ", "gyo": "ぎょ",
+      "ja": "じゃ", "ju": "じゅ", "jo": "じょ",
+      "bya": "びゃ", "byu": "びゅ", "byo": "びょ",
+      "pya": "ぴゃ", "pyu": "ぴゅ", "pyo": "ぴょ",
+      
+      // 小文字ひらがな単体
+      "xa": "ぁ",  "xi": "ぃ",  "xu": "ぅ",  "xe": "ぇ",  "xo": "ぉ",
+      "la": "ぁ",  "li": "ぃ",  "lu": "ぅ",  "le": "ぇ",  "lo": "ぉ",
+      "xya": "ゃ", "xyu": "ゅ", "xyo": "ょ",
+      "lya": "ゃ", "lyu": "ゅ", "lyo": "ょ",
+      "xtu": "っ", "xtsu": "っ",
+      "ltu": "っ", "ltsu": "っ",
+      "xwa": "ゎ", "lwa": "ゎ",
+      
+      // 長音記号
+      "bar": "ー"
+    };
+    
+    // ==========================================
+    // 英語ラベルをひらがなに変換
+    // ==========================================
+    function convertToHiragana(sign) {
+      // すでに日本語の場合はそのまま
+      if (romajiToHiragana[sign]) {
+        return romajiToHiragana[sign];
+      }
+      return sign;
+    }
+    
+    // ==========================================
+    // 覚え方コメントを読み込み
+    // ==========================================
+    async function loadCharacterHints() {
+      try {
+        const cacheBuster = `?v=${Date.now()}`;
+        const response = await fetch(`./data/character_hints.txt${cacheBuster}`);
+        const text = await response.text();
+        
+        CHARACTER_HINTS = {};
+        text.split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0 && line.includes('|'))
+          .forEach(line => {
+            const [char, hint] = line.split('|').map(s => s.trim());
+            if (char && hint) {
+              CHARACTER_HINTS[char] = hint;
+            }
+          });
+        
+        console.log('✅ 覚え方コメント読み込み完了:', Object.keys(CHARACTER_HINTS).length, '文字');
+      } catch (error) {
+        console.error('覚え方コメント読み込みエラー:', error);
+        // エラーでも続行（コメントなしで動作）
+        CHARACTER_HINTS = {};
+      }
+    }
+    
+    // ==========================================
+    // モード切り替え
+    // ==========================================
+    async function switchMode(mode) {
+      currentMode = mode;
+      
+      // ボタンのアクティブ状態更新
+      document.getElementById('modeIndividual').classList.toggle('active', mode === 'individual');
+      document.getElementById('modeRandom').classList.toggle('active', mode === 'random');
+      
+      if (mode === 'individual') {
+        // 個別練習モード
+        document.getElementById('characterSelector').style.display = 'block';
+        document.getElementById('randomModeUI').style.display = 'none';
+        document.querySelector('.navigation').style.display = 'flex';
+        document.getElementById('prevBtn').style.display = 'inline-block';
+        document.getElementById('nextBtn').style.display = 'inline-block';
+        randomModeActive = false;
+        
+        // 現在の文字を再選択（UIをリセット、由来コメントも表示される）
+        selectCharacter(currentCharIndex);
+        
+      } else if (mode === 'random') {
+        // ランダム出題モード
+        document.getElementById('characterSelector').style.display = 'none';
+        document.getElementById('randomModeUI').style.display = 'block';
+        document.querySelector('.navigation').style.display = 'flex';  // メニューボタンのため表示
+        document.getElementById('prevBtn').style.display = 'none';  // 前へボタン非表示
+        document.getElementById('nextBtn').style.display = 'none';  // 次へボタン非表示
+        
+        // ランダムモード開始（完了を待つ）
+        await startRandomMode();
+      }
+    }
+    
+    // ==========================================
+    // ランダム出題モード
+    // ==========================================
+    async function startRandomMode() {
+      randomModeActive = true;
+      
+      // 統計リセット
+      totalQuestions = 0;
+      correctAnswers = 0;
+      currentQuestionAnswered = false;
+      
+      // 出題対象の文字リスト（清音のみ）
+      randomCharPool = [...JUDGEABLE_CHARS];
+      
+      // 最初の文字を出題（完了を待つ）
+      await nextRandomCharacter();
+    }
+    
+    async function nextRandomCharacter() {
+      if (randomCharPool.length === 0) {
+        // 全文字終了 - 個別練習モードに戻る
+        switchMode('individual');
+        return;
+      }
+      
+      // ランダムに文字を選択
+      const randomIndex = Math.floor(Math.random() * randomCharPool.length);
+      currentChar = randomCharPool[randomIndex];
+      
+      // 出題数カウント
+      totalQuestions++;
+      currentQuestionAnswered = false;
+      
+      // UI更新
+      document.getElementById('randomCharDisplay').textContent = currentChar;
+      
+      // ランダムモードでは由来コメントを非表示
+      const hintElement = document.getElementById('charHint');
+      hintElement.style.display = 'none';
+      
+      // VRMモーション切り替え（完了を待つ）
+      await switchVRMMotion(currentChar);
+      
+      // ★ 1フレーム待ってからtimeScale=0.0001で停止
+      // animate()が最低1回実行され正しいポーズが描画されてからフリーズする
+      // timeScale=0ではなく0.0001を使う（0だとThree.jsがTポーズを出す）
+      await new Promise(resolve => requestAnimationFrame(() => {
+        if (action && currentMode === 'random') {
+          action.timeScale = 0.0001;
+          if (exprAction) exprAction.timeScale = 0.0001;
+          isPaused = true;
+          console.log('[RANDOM] ⏸ Frozen at', action.time.toFixed(3), 's (timeScale=0.0001)');
+        }
+        resolve();
+      }));
+      
+      // フレームバッファをクリア
+      frameBuffer = [];
+      
+      // 認識結果リセット
+      const resultArea = document.querySelector('.recognition-result');
+      resultArea.classList.remove('disabled');
+      updateUI('-', 0, 'waiting', '手をカメラに映してください');
+    }
+    
+    function updateRandomStats() {
+      // 統計更新は不要になったが、関数は残しておく（エラー回避）
+    }
+    
+    function endRandomMode() {
+      // 終了機能は不要になったが、関数は残しておく（エラー回避）
+      switchMode('individual');
+    }
+    
+    // ==========================================
+    // VRM表示の初期化
+    // ==========================================
+    async function initVRM() {
+      console.log('🎓 VRM Display - Practice Mode');
+      
+      // Three.jsモジュールのインポート
+      const THREE = await import('three');
+      window.THREE = THREE; // グローバルに設定（他の関数からも使えるように）
+      
+      const { OrbitControls: OC } = await import('three/addons/controls/OrbitControls.js');
+      const { GLTFLoader: GL } = await import('three/addons/loaders/GLTFLoader.js');
+      const { VRMLoaderPlugin: VLP } = await import('@pixiv/three-vrm');
+      
+      // グローバル変数に代入
+      OrbitControls = OC;
+      GLTFLoader = GL;
+      VRMLoaderPlugin = VLP;
+      
+      const container = document.getElementById('vrm-canvas');
+
+      // Clock for animation
+      clock = new THREE.Clock();
+
+      // Scene
+      vrmScene = new THREE.Scene();
+      vrmScene.background = new THREE.Color(0x87ceeb);
+      vrmScene.fog = new THREE.Fog(0xc9e8f5, 8, 25);
+
+      // Camera
+      vrmCamera = new THREE.PerspectiveCamera(
+        45,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        100
+      );
+      vrmCamera.position.set(0, 1.4, 1.4);
+      
+      console.log('📷 Initial camera position:', vrmCamera.position.toArray());
+
+      // Renderer
+      vrmRenderer = new THREE.WebGLRenderer({ antialias: true });
+      vrmRenderer.setSize(container.clientWidth, container.clientHeight);
+      vrmRenderer.setPixelRatio(window.devicePixelRatio);
+      vrmRenderer.shadowMap.enabled = true;
+      vrmRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+      vrmRenderer.toneMappingExposure = 1.5;
+      vrmRenderer.outputColorSpace = THREE.SRGBColorSpace;
+      container.appendChild(vrmRenderer.domElement);
+      // ★ canvasをabsoluteにしてボタン（z-index:10）より背面に置く
+      vrmRenderer.domElement.style.position = 'absolute';
+      vrmRenderer.domElement.style.top = '0';
+      vrmRenderer.domElement.style.left = '0';
+      vrmRenderer.domElement.style.zIndex = '1';
+
+      // Controls
+      vrmControls = new OrbitControls(vrmCamera, vrmRenderer.domElement);
+      vrmControls.target.set(0, 1.2, 0);
+      vrmControls.enableDamping = true;
+      vrmControls.dampingFactor = 0.05;
+      vrmControls.enablePan = true;
+      vrmControls.update();
+      
+      console.log('📷 Camera target:', vrmControls.target.toArray());
+      
+      // カメラの初期位置とターゲットを保存
+      initialCameraPosition = vrmCamera.position.clone();
+      initialCameraTarget = vrmControls.target.clone();
+
+      // Lights
+      const directionalLight = new THREE.DirectionalLight(0xfff8f0, 2.2);
+      directionalLight.position.set(2, 4, 3);
+      directionalLight.castShadow = true;
+      vrmScene.add(directionalLight);
+
+      const directionalLight2 = new THREE.DirectionalLight(0xb0d8f8, 0.8);
+      directionalLight2.position.set(-2, 2, -2);
+      vrmScene.add(directionalLight2);
+
+      const ambientLight = new THREE.AmbientLight(0xd0e8ff, 1.0);
+      vrmScene.add(ambientLight);
+
+      const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0xd2b48c, 1.0);
+      vrmScene.add(hemisphereLight);
+
+      // Ground
+      const groundGeometry = new THREE.PlaneGeometry(10, 10);
+      const groundMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xf5deb3,
+        roughness: 0.8
+      });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      vrmScene.add(ground);
+
+      // Load VRM
+      try {
+        console.log('📂 Loading VRM from: ./vrm/Diver_Woman7.vrm');
+        
+        const loader = new GLTFLoader();
+        loader.register((parser) => new VRMLoaderPlugin(parser));
+
+        const gltf = await loader.loadAsync('./vrm/Diver_Woman7.vrm');
+        vrm = gltf.userData.vrm;
+        
+        vrmScene.add(vrm.scene);
+        
+        // スプリングボーン初期化
+        if (vrm.springBoneManager && vrm.springBoneManager.reset) {
+          vrm.springBoneManager.reset();
+        }
+        for (let i = 0; i < 30; i++) {
+          vrm.update(1 / 60);
+        }
+        
+        // 髪のボーン修正
+        console.log('🔧 Fixing hair bone rotations...');
+        let fixCount = 0;
+        hairBones = [];
+        vrm.scene.traverse((object) => {
+          if (object.isBone && object.name.match(/J_Sec_Hair[123]_\d+$/)) {
+            hairBones.push(object);
+            
+            const euler = object.rotation;
+            const xDeg = Math.abs(euler.x * 180 / Math.PI);
+            const zDeg = Math.abs(euler.z * 180 / Math.PI);
+            
+            if (xDeg > 170) {
+              object.rotation.x = 0;
+              fixCount++;
+            }
+            if (zDeg > 150) {
+              object.rotation.z = 0;
+              fixCount++;
+            }
+          }
+        });
+        console.log(`✅ Fixed ${fixCount} extreme hair rotations (${hairBones.length} bones cached)`);
+        
+        // VRM初期状態を保存
+        vrmInitialPosition = vrm.scene.position.clone();
+        vrmInitialRotation = vrm.scene.quaternion.clone();
+        
+        // 影の設定
+        vrm.scene.traverse((object) => {
+          if (object.isMesh) {
+            object.castShadow = true;
+          }
+        });
+
+        console.log('✅ VRM loaded successfully');
+        
+        // Load Motion - 現在選択中の文字に対応するモーション
+        const initialGlb = CHAR_TO_GLB[currentChar] || '01_a.glb';
+        console.log(`📂 Loading motion for: ${currentChar} (${initialGlb})`);
+        await loadMotion(`./glb/${initialGlb}`);
+        
+      } catch (error) {
+        console.error('❌ VRM load error:', error);
+      }
+
+      // 画面クリックで再生・停止トグル
+      let mouseDownPos = null;
+      let pausedTime = 0.05; // 停止時のtime位置
+      
+      vrmRenderer.domElement.addEventListener('mousedown', (e) => {
+        mouseDownPos = { x: e.clientX, y: e.clientY };
+        console.log('[CLICK] Mouse down at', e.clientX, e.clientY);
+      });
+      
+      vrmRenderer.domElement.addEventListener('mouseup', (e) => {
+        if (!mouseDownPos) return;
+        
+        const deltaX = Math.abs(e.clientX - mouseDownPos.x);
+        const deltaY = Math.abs(e.clientY - mouseDownPos.y);
+        
+        console.log('[CLICK] Mouse up, delta:', deltaX, deltaY);
+        
+        if (deltaX < 5 && deltaY < 5) {
+          console.log('[CLICK] Click detected (small movement)');
+          if (action) {
+            if (isPaused) {
+              isPaused = false;
+              action.timeScale = 1;
+              if (exprAction) exprAction.timeScale = 1;
+              console.log(`[CLICK] ▶ Playing from ${action.time.toFixed(3)}s`);
+            } else {
+              isPaused = true;
+              action.timeScale = 0.0001;
+              if (exprAction) exprAction.timeScale = 0.0001;
+              console.log(`[CLICK] ⏸ Paused at ${action.time.toFixed(3)}s`);
+            }
+          }
+        } else {
+          console.log('[CLICK] Not a click (moved too much)');
+        }
+        
+        mouseDownPos = null;
+      });
+
+      // Animation loop
+      let lastIsPausedState = null;
+      
+      function animate() {
+        requestAnimationFrame(animate);
+        
+        const delta = clock.getDelta();
+        
+        // isPausedの状態変化をログ
+        if (isPaused !== lastIsPausedState) {
+          console.log(`[LOOP] isPaused changed: ${lastIsPausedState} → ${isPaused}`);
+          if (action) {
+            console.log(`[LOOP] Action time: ${action.time.toFixed(3)}s`);
+          }
+          lastIsPausedState = isPaused;
+        }
+        
+        vrmControls.update();
+        
+        // VRM更新（スプリングボーン含め常にdeltaで更新）
+        if (vrm) {
+          vrm.update(delta);
+        }
+        
+        // ★ Mixer更新：常にmixer.update(delta)を呼ぶ
+        // isPaused時に mixer.update(0) を呼ぶとThree.js r159では
+        // ボーンへの書き込みが空になりTポーズになる（既知のバグ）
+        // → action.timeScale=0.0001にして「事実上停止」しつつ毎フレーム正しく評価させる
+        if (mixer) {
+          mixer.update(delta);
+          
+          if (!isPaused && action) {
+            const duration = action.getClip().duration;
+            if (action.time > duration - 0.05) {
+              action.time = 0.05;
+            }
+          }
+          
+          updateSeekSlider();
+        }
+        
+        // ルートモーション対策
+        if (vrm && vrmInitialPosition && vrmInitialRotation) {
+          vrm.scene.position.copy(vrmInitialPosition);
+          vrm.scene.quaternion.copy(vrmInitialRotation);
+        }
+        
+        // 髪のボーン対策（最適化版）
+        if (hairBones.length > 0) {
+          hairBones.forEach(bone => {
+            const euler = bone.rotation;
+            const xDeg = Math.abs(euler.x * 180 / Math.PI);
+            const zDeg = Math.abs(euler.z * 180 / Math.PI);
+            
+            if (xDeg > 170) {
+              bone.rotation.x = 0;
+            }
+            if (zDeg > 150) {
+              bone.rotation.z = 0;
+            }
+          });
+        }
+        
+        vrmRenderer.render(vrmScene, vrmCamera);
+      }
+      animate();
+      
+      // Resize
+      window.addEventListener('resize', () => {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        vrmCamera.aspect = width / height;
+        vrmCamera.updateProjectionMatrix();
+        
+        vrmRenderer.setSize(width, height);
+      });
+    }
+    
+    // ==========================================
+    // ブラックアウト表示（ロックコンテンツ）
+    // ==========================================
+    function showBlackout(char) {
+      const overlay = document.getElementById('vrm-blackout');
+      const title = document.getElementById('blackout-title');
+      const message = document.getElementById('blackout-message');
+      
+      // タイトル設定
+      if (SPECIAL_STAGE_NAMES[char]) {
+        title.textContent = `${SPECIAL_STAGE_NAMES[char]} - ロック中`;
+      } else {
+        title.textContent = 'このコンテンツはロックされています';
+      }
+      
+      // 解放条件を取得（character_hints.txtから）
+      const unlockCondition = CHARACTER_HINTS[char] || 'タイピングゲームで対応するステージをクリアすると解放されます。';
+      message.textContent = unlockCondition;
+      
+      // オーバーレイを表示
+      overlay.classList.add('show');
+      
+      console.log(`🔒 Locked content: ${char} (${SPECIAL_STAGE_NAMES[char] || char})`);
+    }
+    
+    function hideBlackout() {
+      const overlay = document.getElementById('vrm-blackout');
+      overlay.classList.remove('show');
+    }
+    
+    // ==========================================
+    // VRMモーション切り替え
+    // ==========================================
+    async function switchVRMMotion(char) {
+      // 対応するGLBファイル名を取得
+      const glbFile = CHAR_TO_GLB[char];
+      
+      if (!glbFile) {
+        console.warn(`⚠️ No motion file for character: ${char}`);
+        return;
+      }
+      
+      const motionPath = `./glb/${glbFile}`;
+      
+      console.log(`🔄 Switching motion to: ${char} (${glbFile})`);
+      
+      // 古いアニメーションは停止せず、新しいモーションを読み込んでから切り替え
+      // これによりTポーズが映るのを防ぐ
+      await loadMotion(motionPath);
+    }
+    
+    // ==========================================
+    // モーション読み込み
+    // ==========================================
+    async function loadMotion(motionPath) {
+      const THREE = window.THREE;
+      
+      try {
+        console.log('');
+        console.log('========================================');
+        console.log('[LOAD] START loadMotion:', motionPath);
+        console.log('[LOAD] currentMode:', currentMode);
+        console.log('[LOAD] isPaused BEFORE:', isPaused);
+        console.log('========================================');
+        
+        // アニメーションループとの干渉を防ぐため、一時的に停止
+        const wasPlaying = !isPaused;
+        isPaused = true;
+        console.log('[LOAD] Set isPaused = true temporarily');
+        
+        const gltfLoader = new GLTFLoader();
+        
+        // GLB読み込み
+        const gltf = await gltfLoader.loadAsync(motionPath);
+        
+        console.log('[LOAD] ✅ GLB loaded');
+        
+        if (gltf.animations && gltf.animations.length > 0) {
+          // animations[0]=骨, animations[1]=表情(weights) を両方ロード
+          console.log(`[LOAD] animations: ${gltf.animations.map((a,i)=>`[${i}]${a.name}`).join(', ')}`);
+          const boneClip = retargetExpressions(gltf.animations[0]);
+          const exprClip = gltf.animations.length > 1 ? retargetExpressions(gltf.animations[1]) : null;
+          if (exprClip) console.log('[LOAD] ✅ Expression animation found');
+          
+          console.log('[LOAD] Stopping old actions...');
+          if (action) { action.stop(); action.enabled = false; action = null; }
+          if (mixer)  { mixer.stopAllAction(); mixer = null; }
+          
+          console.log('[LOAD] Old actions stopped and cleared');
+          
+          // 新しいmixerで骨アニメ＋表情アニメを同時再生
+          const newMixer = new THREE.AnimationMixer(vrm.scene);
+          const newAction = newMixer.clipAction(boneClip);
+          newAction.setLoop(THREE.LoopRepeat);
+          newAction.clampWhenFinished = false;
+          newAction.reset();
+          newAction.play();
+          
+          // 表情アニメーションを同じミキサーで同期再生
+          if (exprClip) {
+            exprAction = newMixer.clipAction(exprClip);
+            exprAction.setLoop(THREE.LoopRepeat);
+            exprAction.clampWhenFinished = false;
+            exprAction.reset();
+            exprAction.play();
+          } else {
+            exprAction = null;
+          }
+          
+          console.log('[LOAD] New action created and playing');
+          
+          // 0.05秒まで進める
+          newMixer.update(0.05);
+          
+          // VRMも更新（アニメーションを適用）
+          if (vrm) {
+            vrm.update(0.05);
+          }
+          
+          console.log('[LOAD] Advanced to:', newAction.time.toFixed(3), 's');
+          
+          // グローバル変数を更新
+          mixer = newMixer;
+          action = newAction;
+          
+          console.log('[LOAD] Global variables updated');
+          
+          // ルートモーション対策を適用
+          if (vrm && vrmInitialPosition && vrmInitialRotation) {
+            vrm.scene.position.copy(vrmInitialPosition);
+            vrm.scene.quaternion.copy(vrmInitialRotation);
+          }
+          
+          // 髪のボーン対策を適用
+          if (hairBones.length > 0) {
+            hairBones.forEach(bone => {
+              const euler = bone.rotation;
+              const xDeg = Math.abs(euler.x * 180 / Math.PI);
+              const zDeg = Math.abs(euler.z * 180 / Math.PI);
+              
+              if (xDeg > 170) {
+                bone.rotation.x = 0;
+              }
+              if (zDeg > 150) {
+                bone.rotation.z = 0;
+              }
+            });
+          }
+          
+          console.log('[LOAD] Corrections applied');
+          
+          // レンダリングを強制実行してポーズを確実に適用
+          if (vrmRenderer && vrmScene && vrmCamera) {
+            vrmRenderer.render(vrmScene, vrmCamera);
+            console.log('[LOAD] Rendering forced');
+          }
+          
+          // モードに応じて停止/再生
+          if (currentMode === 'random') {
+            isPaused = true;
+            console.log('[LOAD] ⏸ Setting isPaused = TRUE (random mode)');
+            console.log('[LOAD] Paused at', newAction.time.toFixed(3), 's');
+          } else {
+            isPaused = false;
+            console.log('[LOAD] ▶ Setting isPaused = FALSE (normal mode)');
+            console.log('[LOAD] Playing from', newAction.time.toFixed(3), 's');
+          }
+          
+          console.log('[LOAD] ✅ Animation switched:', boneClip.name);
+          console.log('[LOAD] Duration:', boneClip.duration);
+          console.log('[LOAD] isPaused AFTER:', isPaused);
+          console.log('========================================');
+          console.log('[LOAD] Calling setupControls()...');
+          
+          setupControls();
+          
+          console.log('[LOAD] setupControls() completed');
+          console.log('[LOAD] isPaused FINAL:', isPaused);
+          console.log('[LOAD] END loadMotion');
+          console.log('========================================');
+          console.log('');
+        }
+        
+      } catch (error) {
+        console.error('❌ Motion load error:', error);
+      }
+    }
+
+    // ==========================================
+    // 表情トラックのリターゲティング
+    // ==========================================
+    function retargetExpressions(originalClip) {
+      const THREE = window.THREE;
+      console.log('[INFO] Retargeting:', originalClip.name, '(', originalClip.tracks.length, 'tracks)');
+      
+      // VRMに存在する骨ノード名を収集（存在しない骨はTHREE警告が出るため除外）
+      const validBoneNames = new Set();
+      vrm.scene.traverse((obj) => { if (obj.name) validBoneNames.add(obj.name); });
+      
+      const newTracks = [];
+      let hairFiltered = 0, rootFiltered = 0, boneSkipped = 0, bonePassed = 0, morphPassed = 0;
+
+      for (const track of originalClip.tracks) {
+        // ① 髪ボーンフィルタ（揺れ暴走防止）
+        if (track.name.match(/J_Sec_Hair[123]_\d+\.(?:quaternion|rotation|position|scale)/)) {
+          hairFiltered++; continue;
+        }
+        
+        const isBoneTrack = track.name.includes('.position') ||
+                            track.name.includes('.quaternion') ||
+                            track.name.includes('.rotation') ||
+                            track.name.includes('.scale');
+        
+        if (isBoneTrack) {
+          // ② ルートモーションフィルタ（位置ズレ防止）
+          if (track.name.includes('Hips') || track.name.includes('Root') ||
+              track.name.includes('mixamorig') || track.name.toLowerCase().includes('armature')) {
+            rootFiltered++; continue;
+          }
+          // ③ VRMに存在しない骨はスキップ（THREE.PropertyBinding警告防止）
+          const boneName = track.name.split('.')[0];
+          if (!validBoneNames.has(boneName)) { boneSkipped++; continue; }
+          newTracks.push(track.clone()); bonePassed++;
+        } else {
+          // ④ モーフ・表情トラック（morphTargetInfluences）は全通し
+          newTracks.push(track.clone()); morphPassed++;
+        }
+      }
+      
+      console.log(`   Total: ${originalClip.tracks.length}→${newTracks.length} | Hair:${hairFiltered} Root:${rootFiltered} BoneSkip:${boneSkipped} Bone:${bonePassed} Morph:${morphPassed}`);
+      return new THREE.AnimationClip(originalClip.name, originalClip.duration, newTracks);
+    }
+
+    // ==========================================
+    // UIコントロール設定
+    // ==========================================
+    function setupControls() {
+      const playBtn = document.getElementById('vrm-playBtn');
+      const pauseBtn = document.getElementById('vrm-pauseBtn');
+      const resetCameraBtn = document.getElementById('vrm-resetCameraBtn');
+      const seekSlider = document.getElementById('vrm-seekSlider');
+      const speedSlider = document.getElementById('vrm-speedSlider');
+      const speedDisplay = document.getElementById('vrm-speedDisplay');
+      
+      playBtn.addEventListener('click', () => {
+        if (action) {
+          isPaused = false;
+          const ts = parseFloat(speedSlider.value) || 1;
+          action.timeScale = ts;
+          if (exprAction) exprAction.timeScale = ts;
+          console.log('▶ Play');
+        }
+      });
+      
+      pauseBtn.addEventListener('click', () => {
+        isPaused = true;
+        if (action) action.timeScale = 0.0001;
+        if (exprAction) exprAction.timeScale = 0.0001;
+        console.log('⏸ Pause');
+      });
+      
+      resetCameraBtn.addEventListener('click', () => {
+        if (initialCameraPosition && initialCameraTarget) {
+          vrmCamera.position.copy(initialCameraPosition);
+          vrmControls.target.copy(initialCameraTarget);
+          vrmControls.update();
+          console.log('📷 Camera reset');
+        }
+      });
+      
+      seekSlider.addEventListener('input', (e) => {
+        if (action) {
+          const duration = action.getClip().duration;
+          const targetTime = (e.target.value / 100) * duration;
+          action.time = targetTime;
+        }
+      });
+      
+      speedSlider.addEventListener('input', (e) => {
+        if (action) {
+          const spd = parseFloat(e.target.value);
+          action.timeScale = spd;
+          if (exprAction) exprAction.timeScale = spd;
+          speedDisplay.textContent = e.target.value + 'x';
+        }
+      });
+    }
+
+    // ==========================================
+    // シークバー更新
+    // ==========================================
+    function updateSeekSlider() {
+      if (!action) return;
+      
+      const seekSlider = document.getElementById('vrm-seekSlider');
+      const timeDisplay = document.getElementById('vrm-timeDisplay');
+      
+      if (seekSlider && timeDisplay) {
+        const duration = action.getClip().duration;
+        const progress = (action.time / duration) * 100;
+        
+        seekSlider.value = progress;
+        timeDisplay.textContent = `${action.time.toFixed(1)}s / ${duration.toFixed(1)}s`;
+      }
+    }
+    
+    // ==========================================
+    // 初期化
+    // ==========================================
+    async function init() {
+      // ─── カメラ使用確認 ───────────────────────────
+      const cameraAllowed = await new Promise(resolve => {
+        const modal  = document.getElementById('cameraModal');
+        const yesBtn = document.getElementById('cameraYesBtn');
+        const noBtn  = document.getElementById('cameraNoBtn');
+        yesBtn.addEventListener('click', () => { modal.style.display = 'none'; resolve(true);  });
+        noBtn.addEventListener('click',  () => {
+          modal.style.display = 'none';
+          // カメラOFF表示
+          const overlay = document.getElementById('cameraOffOverlay');
+          if (overlay) overlay.style.display = 'flex';
+          const status = document.getElementById('cameraStatus');
+          if (status) status.style.display = 'none';
+          document.getElementById('statusMessage').textContent = 'カメラ未使用モード';
+          document.getElementById('statusMessage').className = 'status-message info';
+          resolve(false);
+        });
+      });
+      // ────────────────────────────────────────────────
+
+      try {
+        // 到達ステージ情報を表示
+        console.log('');
+        console.log('========================================');
+        console.log('🏆 スペシャルステージ到達状況');
+        console.log('========================================');
+        const maxStage = getMaxStageReached();
+        console.log(`到達ステージ: ${maxStage}/5`);
+        if (maxStage > 0) {
+          const reachedStages = Array.from({length: maxStage}, (_, i) => SPECIAL_STAGE_NAMES[String(i+1)]).join(', ');
+          console.log(`アンロック済み: ${reachedStages}`);
+        } else {
+          console.log('まだスペシャルステージに到達していません');
+          console.log('タイピングゲームでステージをクリアしてください');
+        }
+        console.log('========================================');
+        console.log('');
+        
+        // 全文字リストを生成
+        ROW_ORDER.forEach(rowKey => {
+          allCharacters = allCharacters.concat(CHARACTER_ROWS[rowKey].chars);
+        });
+        
+        // 覚え方コメントを読み込み
+        await loadCharacterHints();
+        
+        if (cameraAllowed) {
+          // モデル読み込み（カメラ使用時のみ）
+          console.log('モデル読み込み中...');
+          const modelPath = '../80_siggame/03_model/tfjs_model_official/model.json';
+          model = await tf.loadGraphModel(modelPath);
+          console.log('✅ モデル読み込み完了');
+          
+          // ラベルマップ読み込み
+          const labelMapPath = '../80_siggame/03_model/label_map_unified.json';
+          const labelRes = await fetch(labelMapPath);
+          labelMap = await labelRes.json();
+          console.log('✅ ラベルマップ読み込み完了');
+        } else {
+          console.log('📷 モデル読み込みスキップ（カメラ不使用）');
+        }
+        
+        if (cameraAllowed) {
+          // MediaPipe Hands初期化
+          hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`
+          });
+          
+          hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+          });
+          
+          hands.onResults(onHandsResults);
+          
+          // カメラ起動
+          camera = new Camera(video, {
+            onFrame: async () => {
+              await hands.send({ image: video });
+            },
+            width: 640,
+            height: 480
+          });
+          
+          await camera.start();
+          
+          document.getElementById('cameraStatus').textContent = '認識中';
+          document.getElementById('cameraStatus').className = 'camera-status ready';
+          console.log('✅ カメラ起動完了');
+        } else {
+          console.log('📷 カメラ起動スキップ（不使用モード）');
+        }
+        
+        // VRM表示を初期化
+        await initVRM();
+        console.log('✅ VRM表示初期化完了');
+        
+      } catch (error) {
+        console.error('初期化エラー:', error);
+        
+        // エラーメッセージを日本語で表示
+        let errorMessage = 'カメラまたはモデルの読み込みに失敗しました';
+        
+        if (error.name === 'NotReadableError') {
+          errorMessage = 'カメラが使用中です。他のアプリ（Zoom、Teams等）やブラウザのタブでカメラを使用している場合は終了してから再度お試しください。';
+        } else if (error.name === 'NotAllowedError') {
+          errorMessage = 'カメラの使用が許可されていません。ブラウザの設定でカメラへのアクセスを許可してください。';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = 'カメラが見つかりません。カメラが接続されているか確認してください。';
+        }
+        
+        document.getElementById('cameraStatus').textContent = 'エラー';
+        document.getElementById('cameraStatus').className = 'camera-status loading';
+        document.getElementById('statusMessage').textContent = errorMessage;
+        document.getElementById('statusMessage').className = 'status-message incorrect';
+        
+        // より詳細なエラー情報をコンソールに
+        console.error('エラー詳細:', {
+          name: error.name,
+          message: error.message
+        });
+      }
+    }
+    
+    // ==========================================
+    // MediaPipe結果処理
+    // ==========================================
+    function onHandsResults(results) {
+      // Canvasサイズを動画に合わせる
+      canvas.width = results.image.width;
+      canvas.height = results.image.height;
+      
+      // 動画を描画
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+      
+      // 手が検出された場合
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+        
+        // ランドマークを描画
+        drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+        drawLandmarks(ctx, landmarks, { color: '#FF0000', lineWidth: 1, radius: 3 });
+        
+        // 認識処理
+        recognizeSign(landmarks);
+      } else {
+        // 手が検出されない - フレームバッファをクリア
+        frameBuffer = [];
+        lastRecognized = '';
+        
+        // 判定対象外の文字の場合は特別なメッセージを表示
+        if (!isJudgeable(currentChar)) {
+          updateUI('-', 0, 'info', '💡 この文字は練習モードでは\n認識判定を行いません。\n形を確認してください。');
+        } else {
+          updateUI('-', 0, 'waiting', '手をカメラに映してください');
+        }
+      }
+      
+      ctx.restore();
+    }
+    
+    // ==========================================
+    // 指文字認識（typing_game.htmlと同じ実装）
+    // ==========================================
+    async function recognizeSign(landmarks) {
+      if (!model) return;
+      
+      // 判定対象外の文字は認識処理をスキップ
+      if (!isJudgeable(currentChar)) {
+        return;
+      }
+      
+      try {
+        // ランドマークを63次元の特徴量に変換
+        const features = prepareInputData(landmarks);
+        
+        // フレームバッファに追加
+        frameBuffer.push(features);
+        if (frameBuffer.length > 20) {
+          frameBuffer.shift();
+        }
+        
+        // 15フレーム溜まるまで待機
+        if (frameBuffer.length < TARGET_FRAMES) {
+          updateUI('-', 0, 'waiting', '手をカメラに映してください');
+          return;
+        }
+        
+        // 15フレームにリサンプリング
+        const frames15 = resampleTo15(frameBuffer.slice(-18));
+        const inputTensor = tf.tensor3d([frames15], [1, TARGET_FRAMES, 63]);
+        
+        // 推論
+        const output = await model.executeAsync(inputTensor);
+        const probs = await output.data();
+        
+        inputTensor.dispose();
+        output.dispose();
+        
+        // 最大確率のクラスを取得
+        const predId = Array.from(probs).indexOf(Math.max(...probs));
+        const conf = probs[predId];
+        const sign = labelMap.id_to_label[String(predId)];
+        
+        // 英語ラベルを日本語に変換
+        const recognized = convertToHiragana(sign);
+        const confidence = Math.round(conf * 100);
+        
+        lastRecognized = recognized;
+        lastConfidence = confidence;
+        
+        // 正誤判定（信頼度80%以上で判定）
+        if (conf >= 0.80) {
+          if (recognized === currentChar) {
+            updateUI(recognized, confidence, 'correct', '✅ 正解！');
+            
+            // ランダムモードの場合、正解カウント
+            if (randomModeActive && !currentQuestionAnswered) {
+              currentQuestionAnswered = true;
+              correctAnswers++;
+              
+              // 1秒後に自動的に次の文字へ
+              setTimeout(() => {
+                nextRandomCharacter();
+              }, 1000);
+            }
+          } else {
+            updateUI(recognized, confidence, 'incorrect', `「${currentChar}」を練習中...`);
+          }
+        } else {
+          // 信頼度が低い場合
+          updateUI('-', confidence, 'waiting', '手をカメラに映してください');
+        }
+        
+      } catch (error) {
+        console.error('認識エラー:', error);
+      }
+    }
+    
+    // ==========================================
+    // 15フレームへのリサンプリング
+    // ==========================================
+    function resampleTo15(frames) {
+      const n = frames.length;
+      if (n === TARGET_FRAMES) return frames;
+      
+      // フレーム数が少ない場合は最後のフレームを複製
+      if (n < TARGET_FRAMES) {
+        const result = [...frames];
+        while (result.length < TARGET_FRAMES) {
+          result.push(frames[frames.length - 1]);
+        }
+        return result;
+      }
+      
+      // フレーム数が多い場合は線形補間でリサンプリング
+      const indices = [];
+      for (let i = 0; i < TARGET_FRAMES; i++) {
+        indices.push(i * (n - 1) / (TARGET_FRAMES - 1));
+      }
+      
+      return indices.map(idx => {
+        const i0 = Math.floor(idx);
+        const i1 = Math.min(i0 + 1, n - 1);
+        const alpha = idx - i0;
+        return frames[i0].map((v, j) => v * (1 - alpha) + frames[i1][j] * alpha);
+      });
+    }
+    
+    // ==========================================
+    // 入力データ準備（typing_game.htmlのtoFeature63と同じ）
+    // ==========================================
+    function prepareInputData(landmarks) {
+      const mirror = true; // ミラーモード有効（重要！）
+      const wrist = landmarks[0];
+      
+      // 1. ミラー反転 + 手首基準の相対座標化
+      const pts = landmarks.map(p => ({
+        x: (mirror ? (1.0 - p.x) : p.x) - (mirror ? (1.0 - wrist.x) : wrist.x),
+        y: p.y - wrist.y,
+        z: p.z - wrist.z
+      }));
+      
+      // 2. 最大距離で正規化
+      let maxd = 0;
+      for (const p of pts) {
+        const d = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+        if (d > maxd) maxd = d;
+      }
+      
+      const s = (maxd > 1e-9) ? (1.0 / maxd) : 1.0;
+      const vec = [];
+      for (const p of pts) {
+        vec.push(p.x * s, p.y * s, p.z * s);
+      }
+      
+      return vec;
+    }
+    
+    // ==========================================
+    // UI更新
+    // ==========================================
+    function updateUI(char, confidence, status, message) {
+      document.getElementById('recognizedChar').textContent = char;
+      document.getElementById('confidence').textContent = confidence > 0 ? `信頼度: ${confidence}%` : '-';
+      
+      const statusEl = document.getElementById('statusMessage');
+      statusEl.textContent = message;
+      statusEl.className = `status-message ${status}`;
+    }
+    
+    // ==========================================
+    // 行選択UI
+    // ==========================================
+    function initRowSelector() {
+      const container = document.getElementById('rowButtons');
+      container.innerHTML = '';
+      
+      ROW_ORDER.forEach(rowKey => {
+        const btn = document.createElement('button');
+        btn.className = 'row-btn';
+        btn.textContent = rowKey;
+        if (rowKey === currentRow) btn.classList.add('active');
+        
+        btn.addEventListener('click', () => {
+          selectRow(rowKey);
+        });
+        
+        container.appendChild(btn);
+      });
+    }
+    
+    function selectRow(rowKey) {
+      currentRow = rowKey;
+      currentCharIndex = 0;  // 行が変わったら最初の文字に
+      
+      // 行ボタンのアクティブ状態更新
+      document.querySelectorAll('.row-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === rowKey);
+      });
+      
+      // ラベル更新
+      document.getElementById('currentRowLabel').textContent = `（「${CHARACTER_ROWS[rowKey].label}」を選択中）`;
+      
+      // 文字ボタンを再生成
+      initCharacterButtons();
+      
+      // フレームバッファをクリア
+      frameBuffer = [];
+      
+      // 最初の文字を選択
+      selectCharacter(0);
+    }
+    
+    // ==========================================
+    // 文字選択UI
+    // ==========================================
+    function initCharacterButtons() {
+      const container = document.getElementById('charButtons');
+      container.innerHTML = '';
+      
+      const chars = CHARACTER_ROWS[currentRow].chars;
+      
+      chars.forEach((char, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'char-btn';
+        btn.textContent = char;
+        if (index === 0) btn.classList.add('active');
+        
+        // スペシャルステージの場合、ツールチップを追加
+        if (currentRow === 'S') {
+          btn.title = SPECIAL_STAGE_NAMES[char];
+        }
+        
+        btn.addEventListener('click', () => {
+          selectCharacter(index);
+        });
+        
+        container.appendChild(btn);
+        
+        // 5個ごとに改行（折り返し）を挿入
+        if ((index + 1) % 5 === 0 && index < chars.length - 1) {
+          const lineBreak = document.createElement('div');
+          lineBreak.style.width = '100%';
+          lineBreak.style.height = '0';
+          container.appendChild(lineBreak);
+        }
+      });
+    }
+    
+    function selectCharacter(index) {
+      const chars = CHARACTER_ROWS[currentRow].chars;
+      currentCharIndex = index;
+      currentChar = chars[index];
+      
+      // ブラックアウトを非表示（別の文字に移った時に自動で閉じる）
+      hideBlackout();
+      
+      // UI更新（ロック判定より前に行う）
+      document.getElementById('currentCharDisplay').textContent = currentChar;
+      
+      // ボタンのアクティブ状態更新
+      document.querySelectorAll('.char-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+      
+      // スペシャルステージの場合の処理
+      if (currentRow === 'S') {
+        console.log(`[DEBUG] Special stage selected: ${currentChar}`);
+        
+        // ヒントを非表示
+        const hintElement = document.getElementById('charHint');
+        hintElement.style.display = 'none';
+        
+        // ロック判定
+        const stageNum = parseInt(currentChar);
+        console.log(`[DEBUG] Stage number:`, stageNum);
+        
+        const unlocked = isStageUnlocked(stageNum);
+        console.log(`[DEBUG] Unlock result:`, unlocked);
+        
+        if (!unlocked) {
+          // ロックされている場合、ブラックアウト表示して処理を中断
+          console.log(`[DEBUG] Stage ${stageNum} is LOCKED - showing blackout`);
+          showBlackout(currentChar);
+          return;
+        } else {
+          console.log(`[DEBUG] Stage ${stageNum} is UNLOCKED - loading motion`);
+        }
+      }
+      
+      // コメント更新（スペシャルステージ以外）
+      if (currentRow !== 'S') {
+        const hint = CHARACTER_HINTS[currentChar] || '';
+        const hintElement = document.getElementById('charHint');
+        if (hint) {
+          hintElement.textContent = hint;
+          hintElement.style.display = 'block';
+        } else {
+          hintElement.style.display = 'none';
+        }
+      }
+      
+      // VRMモーション切り替え
+      switchVRMMotion(currentChar);
+      
+      // フレームバッファをクリア（新しい文字の認識を開始）
+      frameBuffer = [];
+      
+      // 判定対象外の文字の場合
+      const resultArea = document.querySelector('.recognition-result');
+      if (!isJudgeable(currentChar)) {
+        resultArea.classList.add('disabled');
+        updateUI('-', 0, 'info', '💡 この文字は練習モードでは\n認識判定を行いません。\n形を確認してください。');
+      } else {
+        resultArea.classList.remove('disabled');
+        updateUI('-', 0, 'waiting', '手をカメラに映してください');
+      }
+    }
+    
+    // ==========================================
+    // ナビゲーション（前へ・次へ）
+    // ==========================================
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      // 現在の行の文字数
+      const chars = CHARACTER_ROWS[currentRow].chars;
+      
+      if (currentCharIndex > 0) {
+        // 同じ行の前の文字へ
+        selectCharacter(currentCharIndex - 1);
+      } else {
+        // 前の行の最後の文字へ
+        const currentRowIndex = ROW_ORDER.indexOf(currentRow);
+        if (currentRowIndex > 0) {
+          const prevRow = ROW_ORDER[currentRowIndex - 1];
+          selectRow(prevRow);
+          const prevChars = CHARACTER_ROWS[prevRow].chars;
+          selectCharacter(prevChars.length - 1);
+        }
+      }
+    });
+    
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      // 現在の行の文字数
+      const chars = CHARACTER_ROWS[currentRow].chars;
+      
+      if (currentCharIndex < chars.length - 1) {
+        // 同じ行の次の文字へ
+        selectCharacter(currentCharIndex + 1);
+      } else {
+        // 次の行の最初の文字へ
+        const currentRowIndex = ROW_ORDER.indexOf(currentRow);
+        if (currentRowIndex < ROW_ORDER.length - 1) {
+          const nextRow = ROW_ORDER[currentRowIndex + 1];
+          selectRow(nextRow);
+          selectCharacter(0);
+        }
+      }
+    });
+    
+    // ==========================================
+    // デバッグ用ヘルパー（開発者コンソールから使用可能）
+    // ==========================================
+    window.unlockStage = function(stage) {
+      saveMaxStageReached(stage);
+      console.log(`✅ ステージ ${stage} までアンロックしました`);
+      console.log('ページをリロードして反映してください');
+    };
+    
+    window.checkStageProgress = function() {
+      const maxStage = getMaxStageReached();
+      console.log(`🏆 現在の到達ステージ: ${maxStage}/5`);
+      for (let i = 1; i <= 5; i++) {
+        const unlocked = isStageUnlocked(i);
+        console.log(`  ${i}. ${SPECIAL_STAGE_NAMES[String(i)]}: ${unlocked ? '✅ アンロック済み' : '🔒 ロック中'}`);
+      }
+    };
+    
+    window.resetStageProgress = function() {
+      localStorage.removeItem('signDiverMaxStage');
+      console.log('✅ ステージ進行状況をリセットしました');
+      console.log('ページをリロードして反映してください');
+    };
+    
+    window.debugLocalStorage = function() {
+      console.log('=== localStorage Debug ===');
+      console.log('signDiverMaxStage:', localStorage.getItem('signDiverMaxStage'));
+      console.log('Type:', typeof localStorage.getItem('signDiverMaxStage'));
+      console.log('Parsed:', parseInt(localStorage.getItem('signDiverMaxStage')));
+      console.log('All localStorage keys:', Object.keys(localStorage));
+    };
+    
+    // ==========================================
+    // 起動
+    // ==========================================
+    initRowSelector();
+    initCharacterButtons();
+    
+    // モード切り替えイベント
+    document.getElementById('modeIndividual').addEventListener('click', () => switchMode('individual'));
+    document.getElementById('modeRandom').addEventListener('click', () => switchMode('random'));
+    
+    init();
+  </script>
+</body>
+</html>

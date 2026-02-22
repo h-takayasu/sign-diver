@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="指文字でタイピング！カメラを使って指文字を認識するゲーム「Sign Diver」。制限時間内にたくさん指文字を表現して深海を目指そう。手話学習にも最適。">
+  <meta name="keywords" content="指文字,手話,タイピングゲーム,学習,教育,AI認識,Sign Diver">
+  <title>Sign Diver - 指文字タイピングゲーム Sign Diver</title>
+  
+  <!-- OGP -->
+  <meta property="og:title" content="Sign Diver - 指文字タイピングゲーム">
+  <meta property="og:description" content="指文字でタイピング！カメラを使って指文字を認識するゲーム。制限時間内にたくさん指文字を表現して深海を目指そう。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yourdomain.com/">
+  <meta property="og:site_name" content="Sign Diver">
+  <meta property="og:locale" content="ja_JP">
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sign Diver - 指文字タイピングゲーム">
+  <meta name="twitter:description" content="指文字でタイピング！カメラを使って指文字を認識するゲーム。深海を目指そう。">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', 'Arial', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: linear-gradient(135deg, #e0f7ff 0%, #b3e5fc 50%, #81d4fa 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    /* 背景の泡アニメーション */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.4) 3px, transparent 3px),
+        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.3) 4px, transparent 4px),
+        radial-gradient(circle at 40% 40%, rgba(255,255,255,0.35) 2px, transparent 2px),
+        radial-gradient(circle at 60% 70%, rgba(255,255,255,0.3) 5px, transparent 5px),
+        radial-gradient(circle at 90% 50%, rgba(255,255,255,0.25) 3px, transparent 3px);
+      background-size: 200px 200px, 300px 300px, 250px 250px, 350px 350px, 280px 280px;
+      animation: bubbleFloat 25s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    @keyframes bubbleFloat {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(10px, -20px); }
+      50% { transform: translate(-5px, -40px); }
+      75% { transform: translate(15px, -30px); }
+    }
+    
+    .container {
+      max-width: 700px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(20px);
+      border-radius: 40px;
+      padding: 50px 40px;
+      box-shadow: 
+        0 8px 32px rgba(100, 181, 246, 0.3),
+        0 0 0 1px rgba(255,255,255,0.8) inset;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .title-container {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .game-title {
+      font-size: 56px;
+      font-weight: 800;
+      color: #1a237e;
+      margin-bottom: 12px;
+      letter-spacing: 4px;
+      text-shadow: 
+        2px 2px 0 rgba(100,181,246,0.3),
+        4px 4px 0 rgba(100,181,246,0.15);
+      animation: gentle Pulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes gentlePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    
+    .game-subtitle {
+      font-size: 18px;
+      color: #0288d1;
+      font-weight: 500;
+      letter-spacing: 1px;
+      opacity: 0.85;
+    }
+    
+    .description-box {
+      background: linear-gradient(135deg, rgba(179,229,252,0.3), rgba(129,212,250,0.3));
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 32px;
+      border: 2px solid rgba(100,181,246,0.3);
+      line-height: 1.8;
+      color: #1a237e;
+    }
+    
+    .description-box p {
+      margin-bottom: 12px;
+    }
+    
+    .highlight-word {
+      color: #0277bd;
+      font-weight: 700;
+      text-shadow: 0 0 8px rgba(206,147,216,0.4);
+      background: linear-gradient(135deg, rgba(206,147,216,0.15), rgba(186,104,200,0.15));
+      padding: 0 8px;
+      border-radius: 8px;
+    }
+    
+    .description-box a {
+      color: #0277bd;
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 2px solid rgba(206,147,216,0.5);
+      transition: all 0.3s;
+    }
+    
+    .description-box a:hover {
+      border-bottom-color: #0277bd;
+      background: rgba(206,147,216,0.1);
+    }
+    
+    .difficulty-select {
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 24px;
+      padding: 28px;
+      margin-bottom: 24px;
+      border: 2px solid rgba(100,181,246,0.3);
+    }
+    
+    .difficulty-select h2 {
+      color: #1a237e;
+      margin-bottom: 20px;
+      font-weight: 700;
+      font-size: 20px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    
+    .difficulty-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .difficulty-btn {
+      flex: 1;
+      min-width: 140px;
+      padding: 20px 16px;
+      border: 3px solid transparent;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #64b5f6, #42a5f5);
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(100,181,246,0.4);
+    }
+    
+    .difficulty-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(100,181,246,0.5);
+    }
+    
+    .difficulty-btn.selected {
+      background: linear-gradient(135deg, #ce93d8, #ba68c8);
+      box-shadow: 0 6px 20px rgba(206,147,216,0.6);
+      border-color: #0277bd;
+    }
+    
+    .difficulty-label {
+      font-size: 22px;
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    .difficulty-desc {
+      font-size: 13px;
+      opacity: 0.95;
+      font-weight: 500;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    
+    .start-button {
+      flex: 1;
+      padding: 20px 32px;
+      background: linear-gradient(135deg, #66bb6a, #4caf50);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 22px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 2px;
+      box-shadow: 0 6px 20px rgba(76,175,80,0.4);
+    }
+    
+    .start-button:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 28px rgba(76,175,80,0.5);
+    }
+    
+    .history-button {
+      padding: 20px 28px;
+      background: rgba(255,255,255,0.8);
+      color: #1a237e;
+      border: 2px solid rgba(100,181,246,0.4);
+      border-radius: 50px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+    
+    .history-button:hover {
+      background: rgba(255,255,255,1);
+      border-color: #64b5f6;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(100,181,246,0.3);
+    }
+    
+    .site-footer {
+      text-align: center;
+      margin-top: 32px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .site-footer a {
+      color: #0288d1;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+      margin: 0 10px;
+      font-weight: 600;
+    }
+    
+    .site-footer a:hover {
+      color: #0277bd;
+    }
+    
+    .footer-icon {
+      color: #ef5350;
+      font-size: 12px;
+      margin-right: 4px;
+    }
+    
+    @media (max-width: 600px) {
+      .game-title { font-size: 36px; }
+      .difficulty-buttons { flex-direction: column; }
+      .difficulty-btn { min-width: auto; }
+      .action-buttons { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title-container">
+      <div class="game-title">SIGN DIVER</div>
+      <div class="game-subtitle">Type with Your Hands</div>
+    </div>
+    
+    <div class="description-box">
+      <p>カメラの前で指文字を表現しタイピング形式のゲームに挑戦！</p>
+      <p>制限時間内にたくさん指文字を表現して<span class="highlight-word">深海</span>を目指そう！</p>
+    </div>
+    
+    <!-- 練習モードへのリンク -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <button onclick="location.href='practice.html'" style="
+        padding: 16px 32px;
+        background: linear-gradient(135deg, #ce93d8, #ba68c8);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 6px 20px rgba(206,147,216,0.4);
+        transition: all 0.3s;
+      " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 28px rgba(206,147,216,0.5)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 20px rgba(206,147,216,0.4)'">
+        🎓 練習モード（初心者向け）
+      </button>
+      <p style="font-size: 13px; color: #4a148c; margin-top: 8px; font-weight: 600;">制限時間なしで指文字を学習</p>
+    </div>
+    
+    <div class="difficulty-select">
+      <h2>難易度を選択</h2>
+      <div class="difficulty-buttons">
+        <button class="difficulty-btn selected" data-difficulty="easy" data-time="60">
+          <div class="difficulty-label">易しい</div>
+          <div class="difficulty-desc">短い単語 / 60秒</div>
+        </button>
+        <button class="difficulty-btn" data-difficulty="medium" data-time="90">
+          <div class="difficulty-label">普通</div>
+          <div class="difficulty-desc">長めの単語 / 90秒</div>
+        </button>
+        <button class="difficulty-btn" data-difficulty="hard" data-time="120">
+          <div class="difficulty-label">難しい</div>
+          <div class="difficulty-desc">文章・挨拶 / 120秒</div>
+        </button>
+      </div>
+    </div>
+    
+    <div class="action-buttons">
+      <button class="start-button">スタート</button>
+      <button class="history-button" onclick="window.location.href='history.html'">📋 プレイ履歴</button>
+    </div>
+  </div>
+  
+  <footer class="site-footer">
+    <div style="margin-bottom: 8px; text-align: center;">
+      <a href="about_yubimoji.html" style="margin: 0 12px;">指文字とは？</a>
+      <span style="color: rgba(74,20,140,0.3);">|</span>
+      <a href="about_signdiver.html" style="margin: 0 12px;">Sign Diverとは？</a>
+      <span style="color: rgba(74,20,140,0.3);">|</span>
+      <a href="terms.html" style="margin: 0 12px;">利用規約</a>
+      <span style="color: rgba(74,20,140,0.3);">|</span>
+      <a href="privacy.html" style="margin: 0 12px;">プライバシーポリシー</a>
+    </div>
+    <a href="https://www.youtube.com/@Katsuo_Shuwa_Doga" target="_blank" rel="noopener noreferrer">
+      <span class="footer-icon">▶</span>
+      <span>@KatsuoShuwaDoga</span>
+    </a>
+  </footer>
+
+  <script>
+    let selectedDifficulty = 'easy';
+    let selectedTime = 60;
+
+    document.querySelectorAll('.difficulty-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedDifficulty = btn.dataset.difficulty;
+        selectedTime = btn.dataset.time;
+      });
+    });
+
+    document.querySelector('.start-button').addEventListener('click', () => {
+      window.location.href = `typing_game.html?difficulty=${selectedDifficulty}&time=${selectedTime}`;
+    });
+  </script>
+</body>
+</html>
