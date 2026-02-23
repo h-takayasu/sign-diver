@@ -1089,6 +1089,9 @@
   </footer>
 
   <script type="module">
+    // URLパラメータ優先 → localStorage → デフォルトright
+    const _params = new URLSearchParams(window.location.search);
+    const selectedHand = _params.get('hand') || localStorage.getItem('signDiver_hand') || 'right';
     // ==========================================
     // 文字データ定義
     // ==========================================
@@ -2341,7 +2344,8 @@
     // 入力データ準備（typing_game.htmlのtoFeature63と同じ）
     // ==========================================
     function prepareInputData(landmarks) {
-      const mirror = true; // ミラーモード有効（重要！）
+      // 右手: ミラーあり / 左手: ミラーなし
+      const mirror = (selectedHand === 'right');
       const wrist = landmarks[0];
       
       // 1. ミラー反転 + 手首基準の相対座標化

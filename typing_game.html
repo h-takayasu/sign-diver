@@ -1122,6 +1122,8 @@
     // URLパラメータ取得
     const params = new URLSearchParams(window.location.search);
     const difficulty = params.get('difficulty') || 'easy';
+    // URLパラメータ優先 → localStorage → デフォルトright
+    const selectedHand = params.get('hand') || localStorage.getItem('signDiver_hand') || 'right';
     const timeLimit = parseInt(params.get('time')) || 60;
     
     // グローバル変数
@@ -1958,7 +1960,8 @@
     
     // 特徴量抽出
     function toFeature63(landmarks) {
-      const mirror = true; // ミラーモード有効（quiz_unified.htmlと同じ）
+      // 右手: ミラーあり（学習データの収録条件）/ 左手: ミラーなし（左手生座標≒右手ミラー像）
+      const mirror = (selectedHand === 'right');
       const wrist = landmarks[0];
       
       const pts = landmarks.map(p => ({

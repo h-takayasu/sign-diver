@@ -277,11 +277,54 @@
       margin-right: 4px;
     }
     
+    /* 利き手選択 */
+    .hand-select {
+      background: rgba(255,255,255,0.6);
+      border-radius: 20px;
+      padding: 20px 28px;
+      margin-bottom: 24px;
+      border: 2px solid rgba(100,181,246,0.3);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hand-select h2 {
+      color: #1a237e;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 1px;
+      white-space: nowrap;
+      margin: 0;
+    }
+    .hand-buttons { display: flex; gap: 10px; flex: 1; }
+    .hand-btn {
+      flex: 1;
+      padding: 12px 16px;
+      border: 3px solid transparent;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #64b5f6, #42a5f5);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(100,181,246,0.3);
+    }
+    .hand-btn:hover { transform: translateY(-2px); }
+    .hand-btn.selected {
+      background: linear-gradient(135deg, #ce93d8, #ba68c8);
+      box-shadow: 0 6px 18px rgba(206,147,216,0.5);
+      border-color: #0277bd;
+    }
+
     @media (max-width: 600px) {
       .game-title { font-size: 36px; }
       .difficulty-buttons { flex-direction: column; }
       .difficulty-btn { min-width: auto; }
       .action-buttons { flex-direction: column; }
+      .hand-select { flex-direction: column; align-items: flex-start; gap: 10px; }
     }
   </style>
 </head>
@@ -300,7 +343,7 @@
     
     <!-- 練習モードへのリンク -->
     <div style="text-align: center; margin-bottom: 24px;">
-      <button onclick="location.href='practice.html'" style="
+      <button onclick="location.href='practice.html?hand=' + selectedHand" style="
         padding: 16px 32px;
         background: linear-gradient(135deg, #ce93d8, #ba68c8);
         color: white;
@@ -317,6 +360,15 @@
       <p style="font-size: 13px; color: #4a148c; margin-top: 8px; font-weight: 600;">制限時間なしで指文字を学習</p>
     </div>
     
+    <!-- 利き手選択 -->
+    <div class="hand-select">
+      <h2>🖐️ 利き手</h2>
+      <div class="hand-buttons">
+        <button class="hand-btn" data-hand="right">右手</button>
+        <button class="hand-btn" data-hand="left">左手</button>
+      </div>
+    </div>
+
     <div class="difficulty-select">
       <h2>難易度を選択</h2>
       <div class="difficulty-buttons">
@@ -361,6 +413,14 @@
     let selectedDifficulty = 'easy';
     let selectedTime = 60;
 
+    // localStorageから利き手を復元（なければ right）
+    let selectedHand = localStorage.getItem('signDiver_hand') || 'right';
+
+    // ページ読み込み時にボタン状態を復元
+    document.querySelectorAll('.hand-btn').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.hand === selectedHand);
+    });
+
     document.querySelectorAll('.difficulty-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
@@ -370,8 +430,17 @@
       });
     });
 
+    document.querySelectorAll('.hand-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.hand-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedHand = btn.dataset.hand;
+        localStorage.setItem('signDiver_hand', selectedHand); // 永続保存
+      });
+    });
+
     document.querySelector('.start-button').addEventListener('click', () => {
-      window.location.href = `typing_game.html?difficulty=${selectedDifficulty}&time=${selectedTime}`;
+      window.location.href = `typing_game.html?difficulty=${selectedDifficulty}&time=${selectedTime}&hand=${selectedHand}`;
     });
   </script>
 </body>
