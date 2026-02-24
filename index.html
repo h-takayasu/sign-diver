@@ -410,6 +410,46 @@
   </footer>
 
   <script>
+    // ═══════════════════════════════════════════════
+    // ページを開いた瞬間にTFJSモデルをキャッシュに先読み
+    // ═══════════════════════════════════════════════
+    (function prefetchResources() {
+      const t0 = performance.now();
+      console.log('[PREFETCH] Start prefetching at', t0.toFixed(0), 'ms');
+
+      const targets = [
+        './tfjs_model_official/model.json',
+        './tfjs_model_official/label_map_unified.json',
+        './mediapipe/hand_landmarker.task',  // 自サイトホスト化により確実にキャッシュされる
+      ];
+
+      targets.forEach(url => {
+        fetch(url, { cache: 'force-cache' })
+          .then(() => {
+            const elapsed = (performance.now() - t0).toFixed(0);
+            console.log(`[PREFETCH] ✅ ${url} cached in ${elapsed}ms`);
+          })
+          .catch(e => console.warn('[PREFETCH] ⚠️ Failed:', url, e));
+      });
+
+      // shardファイルも先読み（model.jsonを取得後にURLを特定）
+      fetch('./tfjs_model_official/model.json', { cache: 'force-cache' })
+        .then(r => r.json())
+        .then(json => {
+          const shards = json?.weightsManifest?.[0]?.paths || [];
+          shards.forEach(shard => {
+            const shardUrl = `./tfjs_model_official/${shard}`;
+            fetch(shardUrl, { cache: 'force-cache' })
+              .then(() => {
+                const elapsed = (performance.now() - t0).toFixed(0);
+                console.log(`[PREFETCH] ✅ ${shard} cached in ${elapsed}ms`);
+              })
+              .catch(e => console.warn('[PREFETCH] ⚠️ Shard failed:', shard, e));
+          });
+        })
+        .catch(() => {});
+    })();
+
     let selectedDifficulty = 'easy';
     let selectedTime = 60;
 
