@@ -2720,6 +2720,10 @@
       renderBg1: '#0099cc',
       renderBg2: '#006699',
       renderRays: 1.0,
+      fadeFrom1: '#0099cc',
+      fadeFrom2: '#006699',
+      fadeFromRay: 1.0,
+      fadeProgress: 1,   // 1=フェード完了済み（初期状態）
       
       bubbles: [],
       particles: [],        // 浮遊塵
@@ -2773,8 +2777,13 @@
           this.targetDepth = L.depth + (chars - L.minChars) * 15;
         }
         
-        // レベルが上がったらクリーチャーを補充
+        // レベルが上がったらクリーチャーを補充＆フェード開始
         if (lv !== this.currentLevel) {
+          // フェード用：現在の色を起点として保存
+          this.fadeFrom1   = this.renderBg1;
+          this.fadeFrom2   = this.renderBg2;
+          this.fadeFromRay = this.renderRays;
+          this.fadeProgress = 0;  // 0→1 で線形フェード
           this.currentLevel = lv;
           this.creatures = [];
           this.spawnCreatures();
@@ -3017,12 +3026,16 @@
           // 深度をなめらかに追従
           this.currentDepth += (this.targetDepth - this.currentDepth) * 0.008;
           
-          // 背景色もなめらかに補間（フェード）
+          // 背景色を線形フェード（約2秒、60fps想定で120フレーム）
           const lv = this.LEVELS[this.currentLevel];
-          const speed = 0.012;
-          this.renderBg1  = this.lerpColor(this.renderBg1,  lv.bg1,  speed);
-          this.renderBg2  = this.lerpColor(this.renderBg2,  lv.bg2,  speed);
-          this.renderRays += (lv.rays - this.renderRays) * speed;
+          const FADE_FRAMES = 120;
+          if (this.fadeProgress < 1) {
+            this.fadeProgress = Math.min(1, this.fadeProgress + 1 / FADE_FRAMES);
+            const t = this.fadeProgress;
+            this.renderBg1  = this.lerpColor(this.fadeFrom1,   lv.bg1,  t);
+            this.renderBg2  = this.lerpColor(this.fadeFrom2,   lv.bg2,  t);
+            this.renderRays = this.lerpVal(this.fadeFromRay, lv.rays, t);
+          }
           
           // 深度メーター更新
           const dm = document.getElementById('depthMeter');
