@@ -6,7 +6,12 @@
   <meta name="description" content="指文字でタイピング！カメラを使って指文字を認識するゲーム「Sign Diver」。制限時間内にたくさん指文字を表現して深海を目指そう。手話学習にも最適。">
   <meta name="keywords" content="指文字,手話,タイピングゲーム,学習,教育,AI認識,Sign Diver">
   <title>Sign Diver - 指文字タイピングゲーム Sign Diver</title>
-  
+
+  <!-- Umami Analytics（Cookie不使用・プライバシーフレンドリー） -->
+  <script defer src="https://cloud.umami.is/script.js"
+    data-website-id="627936e6-b8fd-4d77-92f5-4f2f4f357b5b">
+  </script>
+
   <!-- OGP -->
   <meta property="og:title" content="Sign Diver - 指文字タイピングゲーム">
   <meta property="og:description" content="指文字でタイピング！カメラを使って指文字を認識するゲーム。制限時間内にたくさん指文字を表現して深海を目指そう。">
@@ -349,7 +354,7 @@
     
     <!-- 練習モードへのリンク -->
     <div style="text-align: center; margin-bottom: 24px;">
-      <button onclick="location.href='practice.html?hand=' + selectedHand" style="
+      <button data-umami-event="practice-mode-click" onclick="location.href='practice.html?hand=' + selectedHand" style="
         padding: 16px 32px;
         background: linear-gradient(135deg, #ce93d8, #ba68c8);
         color: white;
@@ -395,7 +400,7 @@
     
     <div class="action-buttons">
       <button class="start-button">スタート</button>
-      <button class="history-button" onclick="window.location.href='history.html'">📋 プレイ履歴</button>
+      <button class="history-button" data-umami-event="history-click" onclick="window.location.href='history.html'">📋 プレイ履歴</button>
     </div>
   </div>
   
@@ -486,6 +491,14 @@
     });
 
     document.querySelector('.start-button').addEventListener('click', () => {
+      // Umami: ゲーム開始イベント（難易度・利き手を記録）
+      if (typeof umami !== 'undefined') {
+        umami.track('game-start', {
+          difficulty: selectedDifficulty,
+          time: selectedTime,
+          hand: selectedHand
+        });
+      }
       window.location.href = `typing_game.html?difficulty=${selectedDifficulty}&time=${selectedTime}&hand=${selectedHand}`;
     });
   </script>
