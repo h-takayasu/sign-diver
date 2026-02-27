@@ -1625,7 +1625,37 @@
         });
 
         console.log('✅ VRM loaded successfully');
-        
+
+        // カメラアクセサリー読み込み（GLB別ファイル方式）
+        try {
+          const cameraGltf = await loader.loadAsync('./glb/camera-blown.glb');
+          const cameraModel = cameraGltf.scene;
+
+          // Chest ボーンを探す（raw = アニメーション追従する実体ボーン）
+          let chestBone = vrm.humanoid?.getRawBoneNode('chest')
+                       || vrm.scene.getObjectByName('J_Bip_C_Chest')
+                       || vrm.scene.getObjectByName('Chest');
+
+          if (chestBone) {
+            // --- 位置・回転・スケール（要調整） ---
+            cameraModel.position.set(0.00, 0.00, 0.0);
+            cameraModel.rotation.set(0, 0, 0);
+            cameraModel.scale.set(1, 1, 1);
+
+            chestBone.attach(cameraModel);
+
+            cameraModel.traverse((child) => {
+              if (child.isMesh) child.castShadow = true;
+            });
+
+            console.log('📷 Camera accessory attached to Chest bone');
+          } else {
+            console.warn('⚠️ Chest bone not found — camera accessory skipped');
+          }
+        } catch (camErr) {
+          console.warn('📷 Camera GLB not loaded (file may not exist yet):', camErr.message);
+        }
+
         // Load Motion - 現在選択中の文字に対応するモーション
         const initialGlb = CHAR_TO_GLB[currentChar] || '01_a.glb';
         console.log(`📂 Loading motion for: ${currentChar} (${initialGlb})`);
