@@ -308,7 +308,7 @@
       white-space: nowrap;
       margin: 0;
     }
-    .hand-buttons { display: flex; gap: 10px; flex: 1; }
+    .hand-buttons { display: flex; gap: 10px; flex: 1; width: 100%; }
     .hand-btn {
       flex: 1;
       padding: 12px 16px;
@@ -335,7 +335,8 @@
       .difficulty-buttons { flex-direction: column; }
       .difficulty-btn { min-width: auto; }
       .action-buttons { flex-direction: column; }
-      .hand-select { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .hand-select { flex-direction: column; align-items: stretch; gap: 10px; flex-wrap: nowrap; padding: 16px; }
+      .hand-buttons { flex: none; width: 100%; }
     }
   </style>
 </head>
@@ -459,6 +460,27 @@
           });
         })
         .catch(() => {});
+
+      // ─────────────────────────────────────────────
+      // practice.html用: VRMモデル＋初期GLBをプリフェッチ
+      // ─────────────────────────────────────────────
+      const isMobile = window.innerWidth <= 640 ||
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const vrmUrl = isMobile
+        ? './vrm/Diver_Woman8_compressed_mobile.vrm'
+        : './vrm/Diver_Woman8_compressed.vrm';
+      const initialGlbUrl = './glb/01_a.glb';
+
+      console.log(`[PREFETCH] Device: ${isMobile ? 'mobile' : 'PC'}, VRM: ${vrmUrl}`);
+
+      [vrmUrl, initialGlbUrl].forEach(url => {
+        fetch(url, { cache: 'force-cache' })
+          .then(() => {
+            const elapsed = (performance.now() - t0).toFixed(0);
+            console.log(`[PREFETCH] ✅ ${url} cached in ${elapsed}ms`);
+          })
+          .catch(e => console.warn('[PREFETCH] ⚠️ Failed:', url, e));
+      });
     })();
 
     let selectedDifficulty = 'easy';
