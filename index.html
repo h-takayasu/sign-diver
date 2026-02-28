@@ -462,18 +462,24 @@
         .catch(() => {});
 
       // ─────────────────────────────────────────────
-      // practice.html用: VRMモデル＋初期GLBをプリフェッチ
+      // practice.html用: VRM・GLB・Three.jsライブラリをプリフェッチ
       // ─────────────────────────────────────────────
       const isMobile = window.innerWidth <= 640 ||
         /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const vrmUrl = isMobile
         ? './vrm/Diver_Woman8_compressed_mobile.vrm'
         : './vrm/Diver_Woman8_compressed.vrm';
-      const initialGlbUrl = './glb/01_a.glb';
 
       console.log(`[PREFETCH] Device: ${isMobile ? 'mobile' : 'PC'}, VRM: ${vrmUrl}`);
 
-      [vrmUrl, initialGlbUrl].forEach(url => {
+      const practiceAssets = [
+        vrmUrl,
+        './glb/01_a.glb',
+        './threejs/three.module.min.js',
+        './threejs/three-vrm.module.min.js',
+      ];
+
+      practiceAssets.forEach(url => {
         fetch(url, { cache: 'force-cache' })
           .then(() => {
             const elapsed = (performance.now() - t0).toFixed(0);
