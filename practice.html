@@ -1074,9 +1074,8 @@
       
       <!-- 説明文 -->
       <div class="random-description">
-        <p>カメラモード限定機能です。ランダムに指文字を出題します。</p>
+        <p>ランダムに出題される指文字を作ってください。</p>
         <p>正解すると自動的に次の文字に進みます。</p>
-        <p>見本は一時停止状態にしているので確認したい場合は再生してください。</p>
       </div>
     </div>
     
@@ -1264,6 +1263,7 @@
     // VRM表示用
     let vrmScene, vrmCamera, vrmRenderer, vrmControls, vrm;
     let mixer, action, exprAction, clock;
+    let currentGltf = null;  // 現在ロード中のGLBオブジェクト（morph index参照用）
     let vrmInitialPosition, vrmInitialRotation;
     let isPaused = false;
     let initialCameraPosition, initialCameraTarget;
@@ -1539,7 +1539,7 @@
       initialCameraTarget = vrmControls.target.clone();
 
       // Lights
-      const directionalLight = new THREE.DirectionalLight(0xfff8f0, 1.2);
+      const directionalLight = new THREE.DirectionalLight(0xfff8f0, 2.2);
       directionalLight.position.set(2, 4, 3);
       directionalLight.castShadow = true;
       vrmScene.add(directionalLight);
@@ -1865,6 +1865,7 @@
         
         // GLB読み込み
         const gltf = await gltfLoader.loadAsync(motionPath);
+        currentGltf = gltf;  // retargetExpressions内でGLBのtargetNamesを参照するために保持
         
         console.log('[LOAD] ✅ GLB loaded');
         
@@ -2015,8 +2016,61 @@
           if (!validBoneNames.has(boneName)) { boneSkipped++; continue; }
           newTracks.push(track.clone()); bonePassed++;
         } else {
-          // ④ モーフ・表情トラック（morphTargetInfluences）は全通し
-          newTracks.push(track.clone()); morphPassed++;
+          // ④ モーフ・表情トラック（morphTargetInfluences）
+          // VRMのメッシュ名取得 + インデックスを57個に展開して適用
+          const cloned = track.clone();
+          if (cloned.name.includes('.morphTargetInfluences')) {
+
+            // VRMシーンのモーフ付きメッシュを取得
+            let vrmMorphMesh = null;
+            vrm.scene.traverse((obj) => {
+              if (obj.isMesh && obj.morphTargetInfluences && obj.morphTargetInfluences.length > 0) {
+                vrmMorphMesh = obj;
+              }
+            });
+
+            if (vrmMorphMesh) {
+              // トラック名をVRMのメッシュ名に合わせる
+              cloned.name = vrmMorphMesh.name + '.morphTargetInfluences';
+
+              const vrmDict    = vrmMorphMesh.morphTargetDictionary || {};  // {name: vrmIndex}
+              const vrmTotal   = vrmMorphMesh.morphTargetInfluences.length; // 57
+
+              // GLBのtargetNamesをgltf.scene内のMeshから取得
+              let glbTargetNames = [];
+              if (typeof currentGltf !== 'undefined' && currentGltf) {
+                currentGltf.scene.traverse((obj) => {
+                  if (obj.isMesh && obj.morphTargetDictionary) {
+                    glbTargetNames = Object.keys(obj.morphTargetDictionary)
+                      .sort((a, b) => obj.morphTargetDictionary[a] - obj.morphTargetDictionary[b]);
+                  }
+                });
+              }
+
+              if (glbTargetNames.length > 0 && vrmTotal > glbTargetNames.length) {
+                // 7値 → 57値に展開: GLBのname→VRMのindexでマッピング
+                const glbCount   = glbTargetNames.length;
+                const oldValues  = cloned.values;
+                const nFrames    = oldValues.length / glbCount;
+                const newValues  = new Float32Array(nFrames * vrmTotal);
+
+                for (let f = 0; f < nFrames; f++) {
+                  for (let gi = 0; gi < glbCount; gi++) {
+                    const name     = glbTargetNames[gi];
+                    const vrmIdx   = vrmDict[name];
+                    if (vrmIdx !== undefined) {
+                      newValues[f * vrmTotal + vrmIdx] = oldValues[f * glbCount + gi];
+                    }
+                  }
+                }
+                cloned.values = newValues;
+                console.log(`[INFO] Morph track expanded: ${glbCount}→${vrmTotal} indices, frames=${nFrames}`);
+              } else {
+                console.log(`[INFO] Morph track renamed to: ${cloned.name}`);
+              }
+            }
+          }
+          newTracks.push(cloned); morphPassed++;
         }
       }
       
