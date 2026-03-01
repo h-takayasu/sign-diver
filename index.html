@@ -153,6 +153,123 @@
       background: rgba(206,147,216,0.1);
     }
     
+    /* 2大モード カード */
+    .mode-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .mode-card {
+      background: rgba(255,255,255,0.75);
+      border-radius: 24px;
+      padding: 24px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 2px solid transparent;
+      box-shadow: 0 4px 20px rgba(0,0,100,0.07);
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      cursor: pointer;
+    }
+    .mode-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(0,0,100,0.12);
+    }
+    .mode-card.active {
+      box-shadow: 0 8px 28px rgba(0,0,100,0.15);
+      transform: translateY(-2px);
+    }
+    .mode-card--practice {
+      border-color: rgba(206,147,216,0.4);
+      background: linear-gradient(160deg, rgba(255,255,255,0.9), rgba(243,229,245,0.6));
+    }
+    .mode-card--practice.active {
+      border-color: rgba(186,104,200,0.9);
+    }
+    .mode-card--game {
+      border-color: rgba(100,181,246,0.4);
+      background: linear-gradient(160deg, rgba(255,255,255,0.9), rgba(227,242,253,0.6));
+    }
+    .mode-card--game.active {
+      border-color: rgba(25,118,210,0.8);
+    }
+    .mode-card-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      opacity: 0.45;
+      color: #1a237e;
+    }
+    .mode-card-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: #1a237e;
+      line-height: 1.2;
+    }
+    .mode-card-desc {
+      font-size: 12px;
+      color: #5c6bc0;
+      font-weight: 600;
+      line-height: 1.6;
+      flex: 1;
+    }
+    .mode-card-select-btn {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(100,181,246,0.15);
+      color: #1a237e;
+      margin-top: 4px;
+    }
+    .mode-card--practice .mode-card-select-btn {
+      background: rgba(206,147,216,0.2);
+    }
+    .mode-card.active .mode-card-select-btn {
+      background: linear-gradient(135deg, #64b5f6, #1976d2);
+      color: white;
+    }
+    .mode-card--practice.active .mode-card-select-btn {
+      background: linear-gradient(135deg, #ce93d8, #ba68c8);
+      color: white;
+    }
+    /* 展開エリア */
+    .mode-detail {
+      background: rgba(255,255,255,0.75);
+      border-radius: 24px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 2px solid rgba(100,181,246,0.3);
+      animation: detailFadeIn 0.25s ease;
+    }
+    @keyframes detailFadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .mode-detail-header {
+      font-size: 16px;
+      font-weight: 800;
+      color: #1a237e;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid rgba(100,181,246,0.2);
+    }
+    .mode-detail-header--practice {
+      border-bottom-color: rgba(206,147,216,0.3);
+    }
+    .start-button--practice {
+      background: linear-gradient(135deg, #ce93d8, #ba68c8) !important;
+      box-shadow: 0 6px 20px rgba(206,147,216,0.4) !important;
+    }
+    @media (max-width: 600px) {
+      .mode-cards { grid-template-columns: 1fr; }
+    }
+
     .difficulty-select {
       background: rgba(255, 255, 255, 0.6);
       border-radius: 24px;
@@ -293,12 +410,8 @@
       background: rgba(255,255,255,0.6);
       border-radius: 20px;
       padding: 20px 28px;
-      margin-bottom: 24px;
+      margin-bottom: 12px;
       border: 2px solid rgba(100,181,246,0.3);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
     }
     .hand-select h2 {
       color: #1a237e;
@@ -330,6 +443,48 @@
       border-color: #0277bd;
     }
 
+    /* カメラ映像表示選択 */
+    .camera-display-select {
+      background: rgba(255,255,255,0.6);
+      border-radius: 20px;
+      padding: 20px 28px;
+      margin-bottom: 24px;
+      border: 2px solid rgba(100,181,246,0.3);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .camera-display-select h2 {
+      color: #1a237e;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 1px;
+      white-space: nowrap;
+      margin: 0;
+    }
+    .camera-display-buttons { display: flex; gap: 10px; flex: 1; width: 100%; }
+    .camera-display-btn {
+      flex: 1;
+      padding: 12px 16px;
+      border: 3px solid transparent;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #64b5f6, #42a5f5);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(100,181,246,0.3);
+    }
+    .camera-display-btn:hover { transform: translateY(-2px); }
+    .camera-display-btn.selected {
+      background: linear-gradient(135deg, #ce93d8, #ba68c8);
+      box-shadow: 0 6px 18px rgba(206,147,216,0.5);
+      border-color: #0277bd;
+    }
+
     @media (max-width: 600px) {
       .game-title { font-size: 36px; }
       .difficulty-buttons { flex-direction: column; }
@@ -353,55 +508,122 @@
       <p>※このゲームはPC向けです。スマートフォンだと一部のレイアウトが崩れる恐れがあります。</p>
     </div>
     
-    <!-- 練習モードへのリンク -->
-    <div style="text-align: center; margin-bottom: 24px;">
-      <button data-umami-event="practice-mode-click" onclick="location.href='practice.html?hand=' + selectedHand" style="
-        padding: 16px 32px;
-        background: linear-gradient(135deg, #ce93d8, #ba68c8);
-        color: white;
-        border: none;
-        border-radius: 50px;
-        font-size: 18px;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 6px 20px rgba(206,147,216,0.4);
-        transition: all 0.3s;
-      " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 28px rgba(206,147,216,0.5)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 20px rgba(206,147,216,0.4)'">
-        🎓 練習モード（初心者向け）
-      </button>
-      <p style="font-size: 13px; color: #4a148c; margin-top: 8px; font-weight: 600;">制限時間なしで指文字を学習</p>
-    </div>
-    
-    <!-- 利き手選択 -->
-    <div class="hand-select">
-      <h2>🖐️ 利き手</h2>
-      <div class="hand-buttons">
-        <button class="hand-btn" data-hand="right">右手</button>
-        <button class="hand-btn" data-hand="left">左手</button>
+    <!-- オプションゾーン -->
+    <div style="
+      background: linear-gradient(135deg, rgba(100,181,246,0.12), rgba(206,147,216,0.12));
+      border: 2px dashed rgba(100,181,246,0.4);
+      border-radius: 24px;
+      padding: 20px 24px 8px;
+      margin-bottom: 24px;
+    ">
+      <div style="
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+      ">
+        <span style="font-size: 18px;">⚙️</span>
+        <span style="font-size: 14px; font-weight: 700; color: #1a237e; letter-spacing: 0.5px;">オプション</span>
+        <span style="
+          font-size: 12px; color: #5c6bc0;
+          background: rgba(100,181,246,0.15);
+          border-radius: 20px;
+          padding: 2px 10px;
+          margin-left: 4px;
+        ">プレイ前に確認してください</span>
+      </div>
+
+      <!-- 利き手設定 -->
+      <div class="hand-select">
+        <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+          <h2 style="margin:0;">🖐️ 利き手設定</h2>
+          <span style="font-size:11px; color:#5c6bc0; font-weight:600;">指文字を表現する手を選択します</span>
+        </div>
+        <div class="hand-buttons">
+          <button class="hand-btn" data-hand="right">右手</button>
+          <button class="hand-btn" data-hand="left">左手</button>
+        </div>
+      </div>
+
+      <!-- カメラ映像表示選択 -->
+      <div class="camera-display-select">
+        <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">
+          <h2 style="margin:0;">📷 カメラ映像</h2>
+          <span style="font-size:11px; color:#5c6bc0; font-weight:600;">画面に自分の姿が映ります（「表示する」推奨）</span>
+        </div>
+        <div class="camera-display-buttons">
+          <button class="camera-display-btn" data-show="true">表示する</button>
+          <button class="camera-display-btn" data-show="false">表示しない</button>
+        </div>
       </div>
     </div>
 
-    <div class="difficulty-select">
-      <h2>難易度を選択</h2>
-      <div class="difficulty-buttons">
-        <button class="difficulty-btn selected" data-difficulty="easy" data-time="60">
-          <div class="difficulty-label">易しい</div>
-          <div class="difficulty-desc">短い単語 / 60秒</div>
-        </button>
-        <button class="difficulty-btn" data-difficulty="medium" data-time="90">
-          <div class="difficulty-label">普通</div>
-          <div class="difficulty-desc">長めの単語 / 90秒</div>
-        </button>
-        <button class="difficulty-btn" data-difficulty="hard" data-time="120">
-          <div class="difficulty-label">難しい</div>
-          <div class="difficulty-desc">文章・挨拶 / 120秒</div>
-        </button>
+    <!-- 2大モード カード -->
+    <div class="mode-cards">
+
+      <!-- 練習モードカード -->
+      <div class="mode-card mode-card--practice" id="cardPractice">
+        <div class="mode-card-label">PRACTICE</div>
+        <div class="mode-card-title">練習モード</div>
+        <div class="mode-card-desc">制限時間なしで指文字をじっくり学習。初心者にもおすすめ。</div>
+        <button class="mode-card-select-btn" id="selectPractice">選ぶ</button>
       </div>
+
+      <!-- タイピングゲームカード -->
+      <div class="mode-card mode-card--game" id="cardGame">
+        <div class="mode-card-label">TYPING GAME</div>
+        <div class="mode-card-title">タイピングゲーム</div>
+        <div class="mode-card-desc">制限時間内に指文字でタイピング。スコアを競おう！</div>
+        <button class="mode-card-select-btn" id="selectGame">選ぶ</button>
+      </div>
+
     </div>
-    
-    <div class="action-buttons">
-      <button class="start-button">スタート</button>
-      <button class="history-button" data-umami-event="history-click" onclick="window.location.href='history.html'">📋 プレイ履歴</button>
+
+    <!-- 選択後に展開するエリア -->
+    <div class="mode-detail" id="modeDetail" style="display:none;">
+
+      <!-- 練習モード詳細 -->
+      <div id="detailPractice" style="display:none;">
+        <div class="mode-detail-header mode-detail-header--practice">
+          🎓 練習モード
+        </div>
+        <div class="action-buttons">
+          <button
+            class="start-button start-button--practice"
+            data-umami-event="practice-mode-click"
+            onclick="location.href='practice.html?hand=' + selectedHand"
+          >始める</button>
+        </div>
+      </div>
+
+      <!-- タイピングゲーム詳細 -->
+      <div id="detailGame" style="display:none;">
+        <div class="mode-detail-header mode-detail-header--game">
+          🎮 タイピングゲーム
+        </div>
+        <div class="difficulty-select">
+          <h2>難易度を選択</h2>
+          <div class="difficulty-buttons">
+            <button class="difficulty-btn selected" data-difficulty="easy" data-time="60">
+              <div class="difficulty-label">易しい</div>
+              <div class="difficulty-desc">短い単語 / 60秒</div>
+            </button>
+            <button class="difficulty-btn" data-difficulty="medium" data-time="90">
+              <div class="difficulty-label">普通</div>
+              <div class="difficulty-desc">長めの単語 / 90秒</div>
+            </button>
+            <button class="difficulty-btn" data-difficulty="hard" data-time="120">
+              <div class="difficulty-label">難しい</div>
+              <div class="difficulty-desc">文章・挨拶 / 120秒</div>
+            </button>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="start-button" id="gameStartBtn">始める</button>
+          <button class="history-button" data-umami-event="history-click" onclick="window.location.href='history.html'">📋 プレイ履歴</button>
+        </div>
+      </div>
+
     </div>
   </div>
   
@@ -475,7 +697,6 @@
       const practiceAssets = [
         vrmUrl,
         './glb/01_a.glb',
-        './glb/camera-blown.glb',
         './threejs/three.module.min.js',
         './threejs/three-vrm.module.min.js',
       ];
@@ -495,11 +716,47 @@
 
     // localStorageから利き手を復元（なければ right）
     let selectedHand = localStorage.getItem('signDiver_hand') || 'right';
+    let selectedShowCamera = (localStorage.getItem('signDiver_showCamera') !== 'false');  // デフォルトtrue
 
     // ページ読み込み時にボタン状態を復元
     document.querySelectorAll('.hand-btn').forEach(btn => {
       btn.classList.toggle('selected', btn.dataset.hand === selectedHand);
     });
+
+    document.querySelectorAll('.camera-display-btn').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.show === String(selectedShowCamera));
+    });
+
+    // モードカード選択インタラクション
+    function selectMode(mode) {
+      const cardPractice = document.getElementById('cardPractice');
+      const cardGame     = document.getElementById('cardGame');
+      const detail       = document.getElementById('modeDetail');
+      const detailP      = document.getElementById('detailPractice');
+      const detailG      = document.getElementById('detailGame');
+
+      // カードのactive状態を更新
+      cardPractice.classList.toggle('active', mode === 'practice');
+      cardGame.classList.toggle('active', mode === 'game');
+
+      // ボタンテキスト更新
+      document.getElementById('selectPractice').textContent = mode === 'practice' ? '選択中' : '選ぶ';
+      document.getElementById('selectGame').textContent     = mode === 'game'     ? '選択中' : '選ぶ';
+
+      // 展開エリア表示
+      detail.style.display = 'block';
+      detailP.style.display = mode === 'practice' ? 'block' : 'none';
+      detailG.style.display = mode === 'game'     ? 'block' : 'none';
+
+      // スクロール
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.getElementById('selectPractice').addEventListener('click', () => selectMode('practice'));
+    document.getElementById('selectGame').addEventListener('click',     () => selectMode('game'));
+    // カード全体クリックでも選択
+    document.getElementById('cardPractice').addEventListener('click', () => selectMode('practice'));
+    document.getElementById('cardGame').addEventListener('click',     () => selectMode('game'));
 
     document.querySelectorAll('.difficulty-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -519,7 +776,16 @@
       });
     });
 
-    document.querySelector('.start-button').addEventListener('click', () => {
+    document.querySelectorAll('.camera-display-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.camera-display-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedShowCamera = (btn.dataset.show === 'true');
+        localStorage.setItem('signDiver_showCamera', String(selectedShowCamera));
+      });
+    });
+
+    document.getElementById('gameStartBtn').addEventListener('click', () => {
       // Umami: ゲーム開始イベント（難易度・利き手を記録）
       if (typeof umami !== 'undefined') {
         umami.track('game-start', {

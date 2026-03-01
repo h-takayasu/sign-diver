@@ -207,6 +207,9 @@
       flex-direction: column;
       gap: 10px;
     }
+    .camera-area.hidden {
+      display: none !important;
+    }
     
     .camera-wrapper {
       position: relative;
@@ -914,12 +917,173 @@
       .site-footer { font-size: 11px; }
       .site-footer a { font-size: 11px; margin: 0 6px; }
     }
+
+    /* 正解演出オーバーレイ */
+    #correctOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    #correctOverlay.show {
+      opacity: 1;
+    }
+    #correctOverlay.hide {
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .correct-popup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .correct-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(60, 200, 100, 0.75);
+      border: 5px solid rgba(100, 255, 140, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 40px rgba(60, 200, 100, 0.5),
+        0 0 80px rgba(60, 200, 100, 0.2);
+      animation: correctPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .correct-circle svg {
+      width: 72px;
+      height: 72px;
+      stroke: white;
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+    .correct-label {
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 4px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+    @keyframes correctPop {
+      0%   { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+
+    /* カメラエラー・選択モーダル */
+    #cameraErrorModal, #cameraSelectModal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(10, 20, 60, 0.82);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+    }
+    #cameraErrorModal.show, #cameraSelectModal.show {
+      display: flex;
+    }
+    .cam-modal-box {
+      background: white;
+      border-radius: 20px;
+      padding: 32px 28px;
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,100,0.3);
+      border: 2px solid rgba(100,181,246,0.4);
+    }
+    .cam-modal-icon { font-size: 48px; margin-bottom: 12px; }
+    .cam-modal-title {
+      font-size: 18px; font-weight: 800;
+      color: #1a237e; margin-bottom: 12px;
+    }
+    .cam-modal-body {
+      font-size: 13px; color: #37474f;
+      line-height: 1.8; margin-bottom: 20px;
+      text-align: left;
+    }
+    .cam-modal-body b { color: #1565c0; }
+    .cam-modal-btn {
+      padding: 11px 28px;
+      border: none; border-radius: 50px;
+      cursor: pointer; font-size: 14px;
+      font-weight: 700; margin: 4px;
+      transition: all 0.2s;
+    }
+    .cam-modal-btn.primary {
+      background: linear-gradient(135deg, #64b5f6, #1976d2);
+      color: white;
+      box-shadow: 0 4px 14px rgba(25,118,210,0.4);
+    }
+    .cam-modal-btn.secondary {
+      background: white; color: #555;
+      border: 2px solid #ccc;
+    }
+    .cam-select-list {
+      display: flex; flex-direction: column;
+      gap: 8px; margin-bottom: 20px;
+    }
+    .cam-select-item {
+      padding: 12px 16px;
+      border: 2px solid rgba(100,181,246,0.3);
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px; font-weight: 600;
+      color: #1a237e;
+      background: rgba(100,181,246,0.08);
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .cam-select-item:hover {
+      background: rgba(100,181,246,0.2);
+      border-color: rgba(100,181,246,0.6);
+    }
+    .cam-select-item.recommended {
+      border: 2px dashed rgba(233,30,99,0.6);
+      background: rgba(233,30,99,0.06);
+    }
+    .cam-select-item.recommended:hover {
+      background: rgba(233,30,99,0.12);
+      border-color: rgba(233,30,99,0.9);
+    }
   </style>
   <link rel="icon" type="image/png" sizes="32x32" href="./asset/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="./asset/favicon-16.png">
   <link rel="apple-touch-icon" href="./asset/sign_diver_favicon_512.png">
 </head>
 <body>
+  <!-- カメラエラーモーダル -->
+  <div id="cameraErrorModal">
+    <div class="cam-modal-box">
+      <div class="cam-modal-icon" id="camErrIcon">⚠️</div>
+      <div class="cam-modal-title" id="camErrTitle">カメラエラー</div>
+      <div class="cam-modal-body" id="camErrBody"></div>
+      <button class="cam-modal-btn primary" id="camErrRetry">再試行</button>
+      <button class="cam-modal-btn secondary" id="camErrSkip">カメラなしで続ける</button>
+    </div>
+  </div>
+
+  <!-- カメラ選択モーダル -->
+  <div id="cameraSelectModal">
+    <div class="cam-modal-box">
+      <div class="cam-modal-icon">📷</div>
+      <div class="cam-modal-title">カメラを選択してください</div>
+      <div class="cam-modal-body">複数のカメラが検出されました。使用するカメラを選択してください。</div>
+      <div class="cam-select-list" id="camSelectList"></div>
+      <button class="cam-modal-btn secondary" id="camSelectSkip">カメラなしで続ける</button>
+    </div>
+  </div>
+
   <!-- カメラ使用確認モーダル -->
   <div id="cameraModal" style="
     position:fixed; inset:0; z-index:9999;
@@ -2154,10 +2318,141 @@
     // ==========================================
     // 初期化
     // ==========================================
+    // ==========================================
+    // カメラ起動ヘルパー（エラーハンドリング・複数カメラ対応）
+    // ==========================================
+
+    // カメラエラーモーダル表示
+    function showCameraError(type) {
+      const modal = document.getElementById('cameraErrorModal');
+      const icon  = document.getElementById('camErrIcon');
+      const title = document.getElementById('camErrTitle');
+      const body  = document.getElementById('camErrBody');
+
+      if (type === 'busy') {
+        icon.textContent  = '🔒';
+        title.textContent = 'カメラが使用中です';
+        body.innerHTML    =
+          'ZoomやTeams、他のブラウザタブなど、別のアプリがカメラを使用しています。<br><br>' +
+          '<b>対処方法:</b><br>' +
+          '① 他のアプリ・タブでカメラを使用している場合は終了してください<br>' +
+          '② その後「再試行」ボタンを押してください';
+      } else if (type === 'denied') {
+        icon.textContent  = '🚫';
+        title.textContent = 'カメラの使用が許可されていません';
+        body.innerHTML    =
+          'ブラウザがカメラへのアクセスをブロックしています。<br><br>' +
+          '<b>許可の方法:</b><br>' +
+          '・<b>Chrome</b>: アドレスバー左の 🔒 → 「カメラ」→「許可」<br>' +
+          '・<b>Edge</b>: アドレスバー左の 🔒 → 「カメラ」→「許可」<br>' +
+          '・<b>Safari</b>: 設定 → Safari → カメラ → 許可<br><br>' +
+          '許可後に「再試行」を押してください。';
+      } else {
+        icon.textContent  = '❌';
+        title.textContent = 'カメラが見つかりません';
+        body.innerHTML    =
+          'カメラデバイスが検出されませんでした。<br><br>' +
+          '・カメラが正しく接続されているか確認してください<br>' +
+          '・内蔵カメラがある場合はドライバーを確認してください';
+      }
+
+      modal.classList.add('show');
+
+      return new Promise(resolve => {
+        document.getElementById('camErrRetry').onclick = () => {
+          modal.classList.remove('show');
+          resolve('retry');
+        };
+        document.getElementById('camErrSkip').onclick = () => {
+          modal.classList.remove('show');
+          resolve('skip');
+        };
+      });
+    }
+
+    // 複数カメラ選択モーダル
+    function showCameraSelect(devices) {
+      const modal = document.getElementById('cameraSelectModal');
+      const list  = document.getElementById('camSelectList');
+      list.innerHTML = '';
+
+      devices.forEach((device, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'cam-select-item' + (i === 0 ? ' recommended' : '');
+        btn.textContent = device.label || `カメラ ${i + 1}`;
+        list.appendChild(btn);
+      });
+
+      modal.classList.add('show');
+
+      return new Promise(resolve => {
+        list.querySelectorAll('.cam-select-item').forEach((btn, i) => {
+          btn.onclick = () => {
+            modal.classList.remove('show');
+            resolve(devices[i].deviceId);
+          };
+        });
+        document.getElementById('camSelectSkip').onclick = () => {
+          modal.classList.remove('show');
+          resolve(null);
+        };
+      });
+    }
+
+    // カメラ起動（複数カメラ対応・エラーハンドリング付き）
+    async function startCameraWithHandling(videoEl) {
+      while (true) {
+        try {
+          // 利用可能なカメラデバイスを列挙
+          const devices = (await navigator.mediaDevices.enumerateDevices())
+            .filter(d => d.kind === 'videoinput');
+
+          let deviceId = null;
+
+          if (devices.length > 1 && devices[0].label) {
+            // 複数カメラかつラベル取得済み（許可済み）→ 選択モーダル
+            deviceId = await showCameraSelect(devices);
+            if (!deviceId) return null;  // スキップ
+          }
+
+          const constraints = {
+            video: deviceId
+              ? { deviceId: { exact: deviceId } }
+              : { facingMode: 'user', width: 640, height: 480 },
+            audio: false,
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          videoEl.srcObject = stream;
+          return stream;
+
+        } catch (err) {
+          let errorType = 'unknown';
+          if (err.name === 'NotReadableError' || err.name === 'AbortError') {
+            errorType = 'busy';
+          } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            errorType = 'denied';
+          } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            errorType = 'notfound';
+          }
+
+          const action = await showCameraError(errorType);
+          if (action === 'skip') return null;
+          // retry → ループ継続
+        }
+      }
+    }
+
     async function init() {
       // ─── カメラ使用確認 ───────────────────────────
       const isMobileDevice = window.innerWidth <= 640 ||
         /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      // カメラ映像表示設定をlocalStorageから取得
+      const showCamera = localStorage.getItem('signDiver_showCamera') !== 'false';
+      if (!showCamera) {
+        document.querySelectorAll('.camera-area').forEach(el => el.classList.add('hidden'));
+      }
 
       const cameraAllowed = await new Promise(resolve => {
         const modal = document.getElementById('cameraModal');
@@ -2242,21 +2537,36 @@
           });
           
           hands.onResults(onHandsResults);
-          
-          // カメラ起動
-          camera = new Camera(video, {
-            onFrame: async () => {
-              await hands.send({ image: video });
-            },
-            width: 640,
-            height: 480
-          });
-          
-          await camera.start();
-          
-          document.getElementById('cameraStatus').textContent = '認識中';
-          document.getElementById('cameraStatus').className = 'camera-status ready';
-          console.log('✅ カメラ起動完了');
+
+          // カメラ起動（複数カメラ対応・エラーハンドリング付き）
+          const stream = await startCameraWithHandling(video);
+
+          if (stream) {
+            await new Promise(resolve => { video.onloadedmetadata = resolve; });
+            await video.play();
+
+            // MediaPipeへフレームを送信するループ
+            const sendFrame = async () => {
+              if (video.readyState >= 2) {
+                await hands.send({ image: video });
+              }
+              requestAnimationFrame(sendFrame);
+            };
+            requestAnimationFrame(sendFrame);
+
+            document.getElementById('cameraStatus').textContent = '認識中';
+            document.getElementById('cameraStatus').className = 'camera-status ready';
+            console.log('✅ カメラ起動完了');
+          } else {
+            // スキップ（カメラなしで続ける）
+            const overlay = document.getElementById('cameraOffOverlay');
+            if (overlay) overlay.style.display = 'flex';
+            const status = document.getElementById('cameraStatus');
+            if (status) status.style.display = 'none';
+            const sm = document.getElementById('statusMessage');
+            if (sm) { sm.textContent = 'カメラ未使用モード'; sm.className = 'status-message info'; }
+            console.log('📷 カメラ起動スキップ（ユーザー選択）');
+          }
         } else {
           console.log('📷 カメラ起動スキップ（不使用モード）');
         }
@@ -2384,17 +2694,26 @@
         // 正誤判定（信頼度80%以上で判定）
         if (conf >= 0.80) {
           if (recognized === currentChar) {
-            updateUI(recognized, confidence, 'correct', '✅ 正解！');
+            updateUI(recognized, confidence, 'correct', '正解！');
             
             // ランダムモードの場合、正解カウント
             if (randomModeActive && !currentQuestionAnswered) {
               currentQuestionAnswered = true;
               correctAnswers++;
-              
-              // 1秒後に自動的に次の文字へ
+
+              // 正解演出
+              const overlay = document.getElementById('correctOverlay');
+              overlay.classList.remove('hide');
+              overlay.classList.add('show');
+              setTimeout(() => {
+                overlay.classList.remove('show');
+                overlay.classList.add('hide');
+              }, 700);
+
+              // 1.2秒後に次の文字へ
               setTimeout(() => {
                 nextRandomCharacter();
-              }, 1000);
+              }, 1200);
             }
           } else {
             updateUI(recognized, confidence, 'incorrect', `「${currentChar}」を練習中...`);
@@ -2715,5 +3034,17 @@
     
     init();
   </script>
+  <!-- 正解演出オーバーレイ -->
+  <div id="correctOverlay">
+    <div class="correct-popup">
+      <div class="correct-circle">
+        <svg viewBox="0 0 72 72">
+          <polyline points="14,38 30,54 58,22"/>
+        </svg>
+      </div>
+      <div class="correct-label">正解</div>
+    </div>
+  </div>
+
 </body>
 </html>
